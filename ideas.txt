@@ -1,0 +1,26 @@
+- 3 cup monty.
+  - Yes is hidden behind another div. The divs are moved around randomly.
+- Distance between two cities guesser. 
+- Somehow use https://en.wikipedia.org/wiki/Portal:Current_events 
+- Tetris
+- Draw a pentagram to some level of accuracy
+- Having to click yes at an exact moment (between 10 and 12 elapsed seconds. Seconds amount randomized)
+- Minesweeper
+  - A simple implementation, but yes only appears once you have finished the minesweeper game. 
+- Really bad chess (the game) puzzle. 
+  - A chess puzzle but with dumb positions and pieces (5 knights)
+- Tripwire maze
+  - A layout of wires. Your mouse is placed at a very specific point on the page
+  - You have to navigate the maze. If you touch the sides, you lose. 
+- Say yes in different languages.
+  - A huge list of "yes" in many languages. You have to pick the right yes. 
+- Guess the song. Play 5 seconds of a song and the user has to decide between 5 options. 
+- Dogs API. "Is this a Labrador?", "Is this a poodle?"
+- https://dev.to/onlyoneerin/38-awesome-apis-to-inspire-your-next-software-project-4395 
+- https://github.com/cheatsnake/emojihub 
+
+Other ideas. 
+- Track time for speedrunning purposes. 
+- Actual leaderboard with stats using a db in Cloudflare.
+- Proper analytics
+
