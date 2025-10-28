@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Launch Game</title>
+    <style>
+        body {
+            font-family: "Courier New", monospace;
+            background: #f5f5dc;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .initials-input {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .initials-input label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        .initials-input input {
+            font-family: "Courier New", monospace;
+            font-size: 1.5rem;
+            padding: 10px;
+            width: 200px;
+            text-align: center;
+            border: 3px solid #000;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        button {
+            font-size: 1.5rem;
+            padding: 20px 50px;
+            border: 3px solid #000;
+            background: #fff;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: "Courier New", monospace;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: 5px 5px 0px #000;
+        }
+
+        button:hover {
+            box-shadow: 3px 3px 0px #000;
+            transform: translate(2px, 2px);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .high-scores {
+            margin-top: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .high-scores h2 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .score-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .score-table th {
+            border-bottom: 3px solid #000;
+            padding: 10px;
+            text-align: left;
+        }
+
+        .score-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #000;
+        }
+
+        .score-rank {
+            text-align: center;
+            width: 50px;
+            font-weight: bold;
+        }
+
+        .no-scores {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="initials-input">
+        <label for="initials">Enter your name:</label>
+        <input
+            type="text"
+            id="initials"
+            maxlength="10"
+            placeholder="PLAYER"
+            oninput="this.value = this.value.toUpperCase()"
+        />
+    </div>
+
+    <button id="start-btn" onclick="startGame()">Start Game</button>
+
+    <div class="high-scores">
+        <h2>HIGH SCORES</h2>
+        <table class="score-table">
+            <thead>
+                <tr>
+                    <th class="score-rank">#</th>
+                    <th>INITIALS</th>
+                    <th>LEVEL</th>
+                    <th>ATTEMPTS</th>
+                </tr>
+            </thead>
+            <tbody id="scores-body">
+                <tr>
+                    <td colspan="4" class="no-scores">No scores yet</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const initialsInput = document.getElementById('initials');
+        const startBtn = document.getElementById('start-btn');
+
+        // Load saved initials
+        const savedInitials = localStorage.getItem('playerInitials');
+        if (savedInitials) {
+            initialsInput.value = savedInitials;
+        }
+
+        function startGame() {
+            const initials = initialsInput.value.trim().toUpperCase();
+
+            if (initials.length === 0) {
+                alert('Please enter your name');
+                return;
+            }
+
+            // Save initials
+            localStorage.setItem('playerInitials', initials);
+
+            // Open game
+            window.open('game.html', '_blank');
+        }
+
+        // Load and display high scores
+        function loadHighScores() {
+            const scores = JSON.parse(localStorage.getItem('highScores') || '[]');
+            const scoresBody = document.getElementById('scores-body');
+
+            if (scores.length === 0) {
+                scoresBody.innerHTML = '<tr><td colspan="4" class="no-scores">No scores yet</td></tr>';
+                return;
+            }
+
+            // Group by player name and keep only their best score
+            const bestScores = {};
+            scores.forEach(score => {
+                const player = score.initials;
+                if (!bestScores[player] ||
+                    score.level > bestScores[player].level ||
+                    (score.level === bestScores[player].level && score.attempts < bestScores[player].attempts)) {
+                    bestScores[player] = score;
+                }
+            });
+
+            // Convert back to array and sort
+            const uniqueScores = Object.values(bestScores);
+            uniqueScores.sort((a, b) => {
+                if (b.level !== a.level) return b.level - a.level;
+                return a.attempts - b.attempts;
+            });
+
+            // Take top 10
+            const top10 = uniqueScores.slice(0, 10);
+
+            scoresBody.innerHTML = top10.map((score, index) => `
+                <tr>
+                    <td class="score-rank">${index + 1}</td>
+                    <td>${score.initials}</td>
+                    <td>Level ${score.level}</td>
+                    <td>${score.attempts}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Load scores on page load
+        loadHighScores();
+
+        // Reload scores when window gets focus (in case game was played)
+        window.addEventListener('focus', loadHighScores);
+    </script>
+</body>
+</html>
