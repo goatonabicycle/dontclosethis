@@ -1,3 +1,7 @@
+/* =================================
+   BASE STYLES
+   ================================= */
+
 * {
   margin: 0;
   padding: 0;
@@ -7,6 +11,13 @@
 body {
   font-family: "Courier New", monospace;
   background: #f5f5dc;
+  background-image: -webkit-repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
   background-image: repeating-linear-gradient(
     0deg,
     transparent,
@@ -15,43 +26,25 @@ body {
     rgba(0, 0, 0, 0.03) 4px
   );
   min-height: 100vh;
+  display: -webkit-box;
+  display: -ms-flexbox;
   display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  -webkit-box-pack: center;
+  -ms-flex-pack: center;
   justify-content: center;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
   align-items: center;
   padding: 20px;
 }
 
-#game-container {
-  background: #fafaf0;
-  border: 3px solid #000;
-  padding: 40px;
-  text-align: center;
-  max-width: 600px;
-  width: 100%;
-  box-shadow: 5px 5px 0px #000;
-  position: relative;
-}
-
-.level-indicator {
-  font-size: 0.85rem;
-  color: #000;
-  margin-bottom: 30px;
-}
-
-#question {
-  font-size: 1.3rem;
-  color: #000;
-  margin-bottom: 40px;
-  line-height: 1.8;
-  font-weight: normal;
-}
-
-.button-container {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
+/* =================================
+   BUTTON STYLES
+   ================================= */
 
 button {
   font-size: 1.1rem;
@@ -63,27 +56,308 @@ button {
   font-family: "Courier New", monospace;
   text-transform: uppercase;
   letter-spacing: 1px;
+  -webkit-box-shadow: 4px 4px 0px #000;
   box-shadow: 4px 4px 0px #000;
+  -webkit-transition: all 0.1s ease;
+  -o-transition: all 0.1s ease;
   transition: all 0.1s ease;
 }
 
 button:hover {
+  -webkit-box-shadow: 2px 2px 0px #000;
   box-shadow: 2px 2px 0px #000;
+  -webkit-transform: translate(2px, 2px);
+  -ms-transform: translate(2px, 2px);
   transform: translate(2px, 2px);
 }
 
 button:active {
+  -webkit-box-shadow: 0px 0px 0px #000;
   box-shadow: 0px 0px 0px #000;
+  -webkit-transform: translate(4px, 4px);
+  -ms-transform: translate(4px, 4px);
   transform: translate(4px, 4px);
 }
 
-/* Level 3: Sliding button */
-.sliding-button {
-  transition: transform 0.3s ease;
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-/* Mobile responsiveness */
+/* =================================
+   GAME PAGE STYLES (game.html)
+   ================================= */
+
+#meta-panel {
+  background: #fff;
+  border: 3px solid #000;
+  padding: 15px 30px;
+  max-width: 600px;
+  width: 100%;
+  -webkit-box-shadow: 5px 5px 0px #000;
+  box-shadow: 5px 5px 0px #000;
+  margin-bottom: 20px;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-pack: justify;
+  -ms-flex-pack: justify;
+  justify-content: space-between;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+}
+
+.meta-item {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: baseline;
+  -ms-flex-align: baseline;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.meta-label {
+  font-size: 0.75rem;
+  color: #666;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.meta-value {
+  font-size: 1.2rem;
+  color: #000;
+  font-weight: bold;
+}
+
+#game-container {
+  background: #fafaf0;
+  border: 3px solid #000;
+  padding: 40px;
+  text-align: center;
+  max-width: 600px;
+  width: 100%;
+  -webkit-box-shadow: 5px 5px 0px #000;
+  box-shadow: 5px 5px 0px #000;
+  position: relative;
+}
+
+#question {
+  font-size: 1.3rem;
+  color: #000;
+  margin-bottom: 40px;
+  line-height: 1.8;
+  font-weight: normal;
+}
+
+.button-container {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  gap: 20px;
+  -webkit-box-pack: center;
+  -ms-flex-pack: center;
+  justify-content: center;
+  -ms-flex-wrap: wrap;
+  flex-wrap: wrap;
+}
+
+.sliding-button {
+  -webkit-transition: -webkit-transform 0.3s ease;
+  transition: -webkit-transform 0.3s ease;
+  -o-transition: transform 0.3s ease;
+  transition: transform 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    -webkit-transform 0.3s ease;
+}
+
+/* =================================
+   LANDING PAGE STYLES (index.html)
+   ================================= */
+
+.game-over-message {
+  background: #ff4444;
+  color: #fff;
+  padding: 15px 30px;
+  margin-bottom: 20px;
+  border: 3px solid #000;
+  -webkit-box-shadow: 4px 4px 0px #000;
+  box-shadow: 4px 4px 0px #000;
+  font-weight: bold;
+  text-align: center;
+  font-size: 1.1rem;
+  -webkit-animation: fadeIn 0.3s ease;
+  animation: fadeIn 0.3s ease;
+}
+
+.victory-message {
+  background: #44ff44;
+  color: #000;
+  padding: 20px 40px;
+  margin-bottom: 20px;
+  border: 3px solid #000;
+  -webkit-box-shadow: 4px 4px 0px #000;
+  box-shadow: 4px 4px 0px #000;
+  font-weight: bold;
+  text-align: center;
+  font-size: 1.3rem;
+  -webkit-animation: fadeIn 0.3s ease;
+  animation: fadeIn 0.3s ease;
+}
+
+@-webkit-keyframes fadeIn {
+  from {
+    opacity: 0;
+    -webkit-transform: translateY(-10px);
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    -webkit-transform: translateY(0);
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    -webkit-transform: translateY(-10px);
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    -webkit-transform: translateY(0);
+    transform: translateY(0);
+  }
+}
+
+.initials-input {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.initials-input label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 1rem;
+  color: #000;
+}
+
+.initials-input input {
+  font-family: "Courier New", monospace;
+  font-size: 1.5rem;
+  padding: 10px;
+  width: 200px;
+  text-align: center;
+  border: 3px solid #000;
+  background: #fff;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.initials-input input:focus {
+  outline: none;
+  -webkit-box-shadow: 0 0 0 2px #000;
+  box-shadow: 0 0 0 2px #000;
+}
+
+#start-btn {
+  font-size: 1.5rem;
+  padding: 20px 50px;
+  letter-spacing: 2px;
+  -webkit-box-shadow: 5px 5px 0px #000;
+  box-shadow: 5px 5px 0px #000;
+}
+
+#start-btn:hover {
+  -webkit-box-shadow: 3px 3px 0px #000;
+  box-shadow: 3px 3px 0px #000;
+}
+
+/* =================================
+   HIGH SCORES TABLE
+   ================================= */
+
+.high-scores {
+  margin-top: 40px;
+  max-width: 600px;
+  width: 100%;
+}
+
+.high-scores h2 {
+  font-size: 1.5rem;
+  margin-bottom: 20px;
+  text-align: center;
+  color: #000;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.score-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fafaf0;
+  border: 3px solid #000;
+  -webkit-box-shadow: 5px 5px 0px #000;
+  box-shadow: 5px 5px 0px #000;
+}
+
+.score-table th {
+  border-bottom: 3px solid #000;
+  padding: 12px 10px;
+  text-align: left;
+  background: #fff;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.score-table td {
+  padding: 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.score-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.score-table tbody tr:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.score-rank {
+  text-align: center;
+  width: 50px;
+  font-weight: bold;
+}
+
+.no-scores {
+  text-align: center;
+  padding: 20px;
+  font-style: italic;
+  opacity: 0.5;
+}
+
+/* =================================
+   MOBILE RESPONSIVE
+   ================================= */
+
 @media (max-width: 600px) {
+  #meta-panel {
+    padding: 12px 20px;
+  }
+
+  .meta-label {
+    font-size: 0.65rem;
+  }
+
+  .meta-value {
+    font-size: 1rem;
+  }
+
   #game-container {
     padding: 30px 20px;
   }
@@ -95,5 +369,25 @@ button:active {
   button {
     font-size: 0.9rem;
     padding: 12px 30px;
+  }
+
+  #start-btn {
+    font-size: 1.2rem;
+    padding: 15px 40px;
+  }
+
+  .initials-input input {
+    font-size: 1.2rem;
+    width: 180px;
+  }
+
+  .high-scores h2 {
+    font-size: 1.2rem;
+  }
+
+  .score-table th,
+  .score-table td {
+    padding: 8px 5px;
+    font-size: 0.9rem;
   }
 }

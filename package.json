@@ -1,0 +1,28 @@
+{
+  "name": "dontclosethis",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "check": "biome check --write .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/goatonabicycle/dontclosethis.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/goatonabicycle/dontclosethis/issues"
+  },
+  "homepage": "https://github.com/goatonabicycle/dontclosethis#readme",
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.2"
+  }
+}
