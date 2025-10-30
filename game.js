@@ -255,7 +255,6 @@ const game = {
 
 const levels = [
   {
-  {
     render: () => {
       game.getQuestionElement().textContent = "Do you want to continue?";
 
@@ -906,196 +905,8 @@ const levels = [
       registerInterval(displayTimeout);
     },
   },
-];
 
-function renderLevel() {
-  const level = levels[gameState.currentLevel - 1];
-
-  const levelIndicator = getElement("current-level");
-  if (levelIndicator) {
-    levelIndicator.textContent = gameState.currentLevel;
-  }
-
-  const questionEl = game.getQuestionElement();
-  const buttonsEl = game.getButtonsElement();
-  const metaPanel = document.getElementById("meta-panel");
-  const container = game.getContainer();
-
-  // Reset all element styles to defaults
-  questionEl.textContent = "";
-  questionEl.innerHTML = "";
-  questionEl.style.cssText = "";
-  buttonsEl.innerHTML = "";
-  buttonsEl.style.cssText = "";
-
-  // Reset meta panel visibility
-  if (metaPanel) {
-    metaPanel.style.display = "";
-  }
-
-  // Reset container styles (but preserve necessary ones)
-  container.style.maxWidth = "";
-  container.style.padding = "";
-  container.style.margin = "";
-  container.style.opacity = "0";
-  container.style.transition = "opacity 0.3s ease";
-
-  // Reset body cursor
-  document.body.style.cursor = "";
-
-  setTimeout(() => {
-    container.style.opacity = "1";
-  }, 50);
-
-  level.render();
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  const urlParams = new URLSearchParams(window.location.search);
-  const debugLevel = urlParams.get("level");
-  if (debugLevel && !isNaN(debugLevel)) {
-    const level = parseInt(debugLevel, 10);
-    if (level >= 1 && level <= levels.length) {
-      gameState.currentLevel = level;
-    }
-  }
-
-  loadProgress();
-  renderLevel();
-
-  const timerInterval = setInterval(() => {
-    const elapsedSeconds = Math.floor(
-      (Date.now() - gameState.startTime) / 1000,
-    );
-    const timerEl = getElement("elapsed-time");
-    if (timerEl) {
-      timerEl.textContent = elapsedSeconds;
-    }
-  }, 1000);
-
-  registerPersistentInterval(timerInterval);
-
-  const debugPanel = getElement("debug-panel");
-  const debugToggle = getElement("debug-toggle");
-  const debugClose = getElement("debug-close");
-
-  if (debugToggle && debugPanel) {
-    debugToggle.addEventListener("click", () => {
-      const isVisible = debugPanel.style.display === "block";
-      debugPanel.style.display = isVisible ? "none" : "block";
-    });
-  }
-
-  if (debugClose && debugPanel) {
-    debugClose.addEventListener("click", () => {
-      debugPanel.style.display = "none";
-    });
-  }
-
-  const debugSkip = getElement("debug-skip");
-  if (debugSkip) {
-    debugSkip.addEventListener("click", () => {
-      game.nextLevel();
-    });
-  }
-
-  const debugWin = getElement("debug-win");
-  if (debugWin) {
-    debugWin.addEventListener("click", () => {
-      game.victory();
-    });
-  }
-
-  const debugDie = getElement("debug-die");
-  if (debugDie) {
-    debugDie.addEventListener("click", () => {
-      game.die();
-    });
-  }
-
-  const debugGoto = getElement("debug-goto");
-  const debugGotoBtn = getElement("debug-goto-btn");
-  if (debugGoto && debugGotoBtn) {
-    debugGotoBtn.addEventListener("click", () => {
-      const targetLevel = parseInt(debugGoto.value, 10);
-      if (targetLevel >= 1 && targetLevel <= levels.length) {
-        clearAllIntervals();
-        gameState.currentLevel = targetLevel;
-        renderLevel();
-      }
-    });
-  }
-
-  const debugClearScores = getElement("debug-clear-scores");
-  if (debugClearScores) {
-    debugClearScores.addEventListener("click", () => {
-      if (confirm("Clear all high scores? This cannot be undone.")) {
-        storage.set(GAME_CONFIG.SCORES_KEY, "[]");
-        alert("High scores cleared!");
-      }
-    });
-  }
-
-  const debugClearProgress = getElement("debug-clear-progress");
-  if (debugClearProgress) {
-    debugClearProgress.addEventListener("click", () => {
-      if (confirm("Clear your progress? This cannot be undone.")) {
-        storage.set(GAME_CONFIG.LEVEL_KEY, "1");
-        storage.set(GAME_CONFIG.ATTEMPTS_KEY, "0");
-        gameState.currentLevel = 1;
-        gameState.totalAttempts = 0;
-        clearAllIntervals();
-        renderLevel();
-        alert("Progress cleared!");
-      }
-    });
-  }
-
-  const debugClearAll = getElement("debug-clear-all");
-  if (debugClearAll) {
-    debugClearAll.addEventListener("click", () => {
-      if (
-        confirm(
-          "Clear EVERYTHING (scores, progress, all data)? This cannot be undone!",
-        )
-      ) {
-        storage.set(GAME_CONFIG.SCORES_KEY, "[]");
-        storage.set(GAME_CONFIG.LEVEL_KEY, "1");
-        storage.set(GAME_CONFIG.ATTEMPTS_KEY, "0");
-        storage.set("justDied", "false");
-        storage.set("hasWon", "false");
-        storage.set("victoryTime", "0");
-        gameState.currentLevel = 1;
-        gameState.totalAttempts = 0;
-        clearAllIntervals();
-        renderLevel();
-        alert("Everything cleared!");
-      }
-    });
-  }
-
-  const debugResetTimer = getElement("debug-reset-timer");
-  if (debugResetTimer) {
-    debugResetTimer.addEventListener("click", () => {
-      gameState.startTime = Date.now();
-    });
-  }
-
-  const debugAddTime = getElement("debug-add-time");
-  if (debugAddTime) {
-    debugAddTime.addEventListener("click", () => {
-      gameState.startTime -= 10000;
-    });
-  }
-
-  const debugSubTime = getElement("debug-sub-time");
-  if (debugSubTime) {
-    debugSubTime.addEventListener("click", () => {
-      gameState.startTime += 10000;
-    });
-  }
-});
-
+  {
     render: () => {
       const config = LEVEL_CONFIG.TRIPWIRE_MAZE;
 
@@ -1385,3 +1196,192 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     },
   },
+];
+
+function renderLevel() {
+  const level = levels[gameState.currentLevel - 1];
+
+  const levelIndicator = getElement("current-level");
+  if (levelIndicator) {
+    levelIndicator.textContent = gameState.currentLevel;
+  }
+
+  const questionEl = game.getQuestionElement();
+  const buttonsEl = game.getButtonsElement();
+  const metaPanel = document.getElementById("meta-panel");
+  const container = game.getContainer();
+
+  // Reset all element styles to defaults
+  questionEl.textContent = "";
+  questionEl.innerHTML = "";
+  questionEl.style.cssText = "";
+  buttonsEl.innerHTML = "";
+  buttonsEl.style.cssText = "";
+
+  // Reset meta panel visibility
+  if (metaPanel) {
+    metaPanel.style.display = "";
+  }
+
+  // Reset container styles (but preserve necessary ones)
+  container.style.maxWidth = "";
+  container.style.padding = "";
+  container.style.margin = "";
+  container.style.opacity = "0";
+  container.style.transition = "opacity 0.3s ease";
+
+  // Reset body cursor
+  document.body.style.cursor = "";
+
+  setTimeout(() => {
+    container.style.opacity = "1";
+  }, 50);
+
+  level.render();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const debugLevel = urlParams.get("level");
+  if (debugLevel && !isNaN(debugLevel)) {
+    const level = parseInt(debugLevel, 10);
+    if (level >= 1 && level <= levels.length) {
+      gameState.currentLevel = level;
+    }
+  }
+
+  loadProgress();
+  renderLevel();
+
+  const timerInterval = setInterval(() => {
+    const elapsedSeconds = Math.floor(
+      (Date.now() - gameState.startTime) / 1000,
+    );
+    const timerEl = getElement("elapsed-time");
+    if (timerEl) {
+      timerEl.textContent = elapsedSeconds;
+    }
+  }, 1000);
+
+  registerPersistentInterval(timerInterval);
+
+  const debugPanel = getElement("debug-panel");
+  const debugToggle = getElement("debug-toggle");
+  const debugClose = getElement("debug-close");
+
+  if (debugToggle && debugPanel) {
+    debugToggle.addEventListener("click", () => {
+      const isVisible = debugPanel.style.display === "block";
+      debugPanel.style.display = isVisible ? "none" : "block";
+    });
+  }
+
+  if (debugClose && debugPanel) {
+    debugClose.addEventListener("click", () => {
+      debugPanel.style.display = "none";
+    });
+  }
+
+  const debugSkip = getElement("debug-skip");
+  if (debugSkip) {
+    debugSkip.addEventListener("click", () => {
+      game.nextLevel();
+    });
+  }
+
+  const debugWin = getElement("debug-win");
+  if (debugWin) {
+    debugWin.addEventListener("click", () => {
+      game.victory();
+    });
+  }
+
+  const debugDie = getElement("debug-die");
+  if (debugDie) {
+    debugDie.addEventListener("click", () => {
+      game.die();
+    });
+  }
+
+  const debugGoto = getElement("debug-goto");
+  const debugGotoBtn = getElement("debug-goto-btn");
+  if (debugGoto && debugGotoBtn) {
+    debugGotoBtn.addEventListener("click", () => {
+      const targetLevel = parseInt(debugGoto.value, 10);
+      if (targetLevel >= 1 && targetLevel <= levels.length) {
+        clearAllIntervals();
+        gameState.currentLevel = targetLevel;
+        renderLevel();
+      }
+    });
+  }
+
+  const debugClearScores = getElement("debug-clear-scores");
+  if (debugClearScores) {
+    debugClearScores.addEventListener("click", () => {
+      if (confirm("Clear all high scores? This cannot be undone.")) {
+        storage.set(GAME_CONFIG.SCORES_KEY, "[]");
+        alert("High scores cleared!");
+      }
+    });
+  }
+
+  const debugClearProgress = getElement("debug-clear-progress");
+  if (debugClearProgress) {
+    debugClearProgress.addEventListener("click", () => {
+      if (confirm("Clear your progress? This cannot be undone.")) {
+        storage.set(GAME_CONFIG.LEVEL_KEY, "1");
+        storage.set(GAME_CONFIG.ATTEMPTS_KEY, "0");
+        gameState.currentLevel = 1;
+        gameState.totalAttempts = 0;
+        clearAllIntervals();
+        renderLevel();
+        alert("Progress cleared!");
+      }
+    });
+  }
+
+  const debugClearAll = getElement("debug-clear-all");
+  if (debugClearAll) {
+    debugClearAll.addEventListener("click", () => {
+      if (
+        confirm(
+          "Clear EVERYTHING (scores, progress, all data)? This cannot be undone!",
+        )
+      ) {
+        storage.set(GAME_CONFIG.SCORES_KEY, "[]");
+        storage.set(GAME_CONFIG.LEVEL_KEY, "1");
+        storage.set(GAME_CONFIG.ATTEMPTS_KEY, "0");
+        storage.set("justDied", "false");
+        storage.set("hasWon", "false");
+        storage.set("victoryTime", "0");
+        gameState.currentLevel = 1;
+        gameState.totalAttempts = 0;
+        clearAllIntervals();
+        renderLevel();
+        alert("Everything cleared!");
+      }
+    });
+  }
+
+  const debugResetTimer = getElement("debug-reset-timer");
+  if (debugResetTimer) {
+    debugResetTimer.addEventListener("click", () => {
+      gameState.startTime = Date.now();
+    });
+  }
+
+  const debugAddTime = getElement("debug-add-time");
+  if (debugAddTime) {
+    debugAddTime.addEventListener("click", () => {
+      gameState.startTime -= 10000;
+    });
+  }
+
+  const debugSubTime = getElement("debug-sub-time");
+  if (debugSubTime) {
+    debugSubTime.addEventListener("click", () => {
+      gameState.startTime += 10000;
+    });
+  }
+});
