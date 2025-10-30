@@ -53,14 +53,18 @@ const LEVEL_CONFIG = {
   SEQUENCE: {
     LETTERS: ["A", "B", "C", "D", "E"],
   },
-  BUTTON_SWAP: {
-    SWAP_DELAY: 2000,
+  CUP_MONTE: {
+    SHOW_DURATION: 2500,
+    SHUFFLE_COUNT: 10,
+    SHUFFLE_SPEED: 800,
+    LIFT_HEIGHT: 1.5,
+    CUP_POSITIONS: [-2.5, 0, 2.5],
   },
   PATTERN_MEMORY: {
-    PATTERN_LENGTH: 5,
-    CHARACTERS: ["A", "B", "C", "D", "E"],
-    OPTION_COUNT: 5,
-    DISPLAY_DURATION: 3000,
+    PATTERN_LENGTH: 6,
+    CHARACTERS: ["A", "B", "C", "D", "E", "F"],
+    OPTION_COUNT: 8,
+    DISPLAY_DURATION: 2500,
   },
 };
 
@@ -186,7 +190,7 @@ function saveHighScore() {
 
   scores.push({
     initials: initials,
-    level: gameState.currentLevel,
+    level: Math.min(gameState.currentLevel, levels.length),
     attempts: gameState.totalAttempts,
     timeElapsed: timeElapsed,
     timestamp: Date.now(),
@@ -214,10 +218,11 @@ const game = {
 
     storage.set("justDied", "true");
 
-    window.close();
-    setTimeout(() => {
-      window.location.href = "about:blank";
-    }, 100);
+    if (window.opener && !window.opener.closed) {
+      window.close();
+    } else {
+      window.location.href = "index.html";
+    }
   },
 
   victory: () => {
@@ -230,10 +235,11 @@ const game = {
     const timeElapsed = Math.floor((Date.now() - gameState.startTime) / 1000);
     storage.set("victoryTime", timeElapsed.toString());
 
-    window.close();
-    setTimeout(() => {
-      window.location.href = "about:blank";
-    }, 100);
+    if (window.opener && !window.opener.closed) {
+      window.close();
+    } else {
+      window.location.href = "index.html";
+    }
   },
 
   getContainer: () => getElement("game-container"),
@@ -245,14 +251,9 @@ const levels = [
   {
     render: () => {
       game.getQuestionElement().innerHTML = `
-        <div style="margin-bottom: 20px;">
-          <strong>Warning:</strong> Something is trying to close this tab.
+        <div style="margin-bottom: 30px; font-size: 1.2rem; line-height: 1.8;">
+          It's violently critical to keep this tab open.<br>Is that clear?
         </div>
-        <div style="margin-bottom: 20px; font-size: 0.9rem;">
-          Your goal is to keep it open by making the right choices.
-          If you click wrong, the tab will close. Don't let that happen!
-        </div>
-        <div>Ready to begin?</div>
       `;
       const btn = createButton("YES", game.nextLevel);
       game.getButtonsElement().appendChild(btn);
@@ -388,6 +389,11 @@ const levels = [
       const safeColorIndex = Math.floor(Math.random() * selectedColors.length);
       const safeColor = selectedColors[safeColorIndex];
 
+      const reorderedColors = [
+        safeColor,
+        ...selectedColors.filter((c) => c !== safeColor),
+      ];
+
       const cycleSpeed =
         Math.floor(
           Math.random() * (config.MAX_CYCLE_SPEED - config.MIN_CYCLE_SPEED + 1),
@@ -398,9 +404,11 @@ const levels = [
       const container = game.getButtonsElement();
 
       let currentColorIndex = 0;
+      let canClick = false;
 
       const trafficBtn = createButton("CLICK ME", () => {
-        if (currentColorIndex === safeColorIndex) {
+        if (!canClick) return;
+        if (currentColorIndex === 0) {
           clearAllIntervals();
           game.nextLevel();
         } else {
@@ -409,15 +417,18 @@ const levels = [
       });
 
       const updateButtonColor = () => {
-        const currentColor = selectedColors[currentColorIndex];
+        const currentColor = reorderedColors[currentColorIndex];
         trafficBtn.style.background = currentColor.hex;
       };
 
       updateButtonColor();
 
       const colorInterval = setInterval(() => {
-        currentColorIndex = (currentColorIndex + 1) % selectedColors.length;
+        currentColorIndex = (currentColorIndex + 1) % reorderedColors.length;
         updateButtonColor();
+        if (currentColorIndex === 1 && !canClick) {
+          canClick = true;
+        }
       }, cycleSpeed);
 
       registerInterval(colorInterval);
@@ -515,24 +526,278 @@ const levels = [
 
   {
     render: () => {
-      const config = LEVEL_CONFIG.BUTTON_SWAP;
-      game.getQuestionElement().textContent = "Click the LEFT button";
+      const config = LEVEL_CONFIG.CUP_MONTE;
+
+      game.getQuestionElement().textContent = "Watch carefully...";
 
       const container = game.getButtonsElement();
+      container.style.display = "block";
+      container.style.width = "100%";
+      container.style.height = "500px";
+      container.style.position = "relative";
 
-      const leftBtn = createButton("LEFT", game.nextLevel);
-      const rightBtn = createButton("RIGHT", game.die);
+      const canvas = document.createElement("canvas");
+      canvas.style.width = "100%";
+      canvas.style.height = "100%";
+      canvas.style.display = "block";
+      container.appendChild(canvas);
 
-      container.appendChild(leftBtn);
-      container.appendChild(rightBtn);
+      const width = container.offsetWidth;
+      const height = container.offsetHeight;
 
-      const swapTimeout = setTimeout(() => {
-        container.innerHTML = "";
-        container.appendChild(rightBtn);
-        container.appendChild(leftBtn);
-      }, config.SWAP_DELAY);
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x2a2a2a);
 
-      registerInterval(swapTimeout);
+      const camera = new THREE.PerspectiveCamera(
+        50,
+        width / height,
+        0.1,
+        1000,
+      );
+      camera.position.set(0, 5, 8);
+      camera.lookAt(0, 0, 0);
+
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      renderer.setSize(width, height);
+      renderer.shadowMap.enabled = true;
+
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambientLight);
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight.position.set(5, 10, 5);
+      directionalLight.castShadow = true;
+      scene.add(directionalLight);
+
+      const tableGeometry = new THREE.PlaneGeometry(15, 10);
+      const tableMaterial = new THREE.MeshStandardMaterial({
+        color: 0x8b6f47,
+        roughness: 0.8,
+      });
+      const table = new THREE.Mesh(tableGeometry, tableMaterial);
+      table.rotation.x = -Math.PI / 2;
+      table.receiveShadow = true;
+      scene.add(table);
+
+      const cupGeometry = new THREE.CylinderGeometry(0.6, 0.8, 1.5, 32);
+      const cupMaterial = new THREE.MeshStandardMaterial({
+        color: 0x8b4513,
+        roughness: 0.7,
+        metalness: 0.2,
+      });
+
+      const outlineMaterial = new THREE.MeshBasicMaterial({
+        color: 0x000000,
+        side: THREE.BackSide,
+      });
+
+      const cups = [
+        { hasYes: true, position: 0, mesh: null, targetX: 0 },
+        { hasYes: false, position: 1, mesh: null, targetX: 0 },
+        { hasYes: false, position: 2, mesh: null, targetX: 0 },
+      ];
+
+      shuffleArray(cups);
+
+      cups.forEach((cup, i) => {
+        const mesh = new THREE.Mesh(cupGeometry, cupMaterial.clone());
+        mesh.position.x = config.CUP_POSITIONS[i];
+        mesh.position.y = 0.75;
+        mesh.castShadow = true;
+        mesh.userData = { cup, index: i };
+        cup.mesh = mesh;
+        cup.targetX = mesh.position.x;
+
+        const outline = new THREE.Mesh(cupGeometry, outlineMaterial);
+        outline.scale.multiplyScalar(1.05);
+        mesh.add(outline);
+
+        scene.add(mesh);
+
+        const textCanvas = document.createElement("canvas");
+        textCanvas.width = 256;
+        textCanvas.height = 128;
+        const ctx = textCanvas.getContext("2d");
+
+        if (cup.hasYes) {
+          ctx.fillStyle = "#00ff00";
+          ctx.fillRect(0, 0, 256, 128);
+          ctx.strokeStyle = "#000";
+          ctx.lineWidth = 8;
+          ctx.strokeRect(0, 0, 256, 128);
+          ctx.fillStyle = "#000";
+          ctx.font = "bold 70px Arial";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("YES", 128, 64);
+        } else {
+          ctx.fillStyle = "#ff4444";
+          ctx.font = "bold 50px Arial";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("NO", 128, 64);
+        }
+
+        const textTexture = new THREE.CanvasTexture(textCanvas);
+        const textMaterial = new THREE.MeshBasicMaterial({
+          map: textTexture,
+          transparent: true,
+        });
+        const textPlane = new THREE.Mesh(
+          new THREE.PlaneGeometry(2, 1),
+          textMaterial,
+        );
+        textPlane.position.y = 0.01;
+        textPlane.rotation.x = -Math.PI / 2;
+        textPlane.visible = false;
+        scene.add(textPlane);
+        cup.textPlane = textPlane;
+        cup.textPlaneTargetX = config.CUP_POSITIONS[i];
+      });
+
+      let canClick = false;
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
+
+      function animate() {
+        requestAnimationFrame(animate);
+
+        cups.forEach((cup) => {
+          const dx = cup.targetX - cup.mesh.position.x;
+          if (Math.abs(dx) > 0.01) {
+            cup.mesh.position.x += dx * 0.1;
+          } else {
+            cup.mesh.position.x = cup.targetX;
+          }
+
+          const tdx = cup.textPlaneTargetX - cup.textPlane.position.x;
+          if (Math.abs(tdx) > 0.01) {
+            cup.textPlane.position.x += tdx * 0.1;
+          } else {
+            cup.textPlane.position.x = cup.textPlaneTargetX;
+          }
+        });
+
+        renderer.render(scene, camera);
+      }
+
+      animate();
+
+      setTimeout(() => {
+        cups.forEach((cup) => {
+          cup.mesh.position.y = config.LIFT_HEIGHT;
+          cup.textPlane.visible = true;
+        });
+      }, 500);
+
+      setTimeout(() => {
+        cups.forEach((cup) => {
+          cup.mesh.position.y = 0.75;
+          cup.textPlane.visible = false;
+        });
+      }, config.SHOW_DURATION);
+
+      let shuffleCount = 0;
+      const startShuffling = setTimeout(() => {
+        game.getQuestionElement().textContent = "Follow the cup with YES!";
+
+        const shuffleInterval = setInterval(() => {
+          const i = Math.floor(Math.random() * 3);
+          let j = Math.floor(Math.random() * 3);
+          while (i === j) {
+            j = Math.floor(Math.random() * 3);
+          }
+
+          const tempX = cups[i].targetX;
+          cups[i].targetX = cups[j].targetX;
+          cups[j].targetX = tempX;
+
+          const tempTextX = cups[i].textPlaneTargetX;
+          cups[i].textPlaneTargetX = cups[j].textPlaneTargetX;
+          cups[j].textPlaneTargetX = tempTextX;
+
+          [cups[i], cups[j]] = [cups[j], cups[i]];
+
+          shuffleCount++;
+
+          if (shuffleCount >= config.SHUFFLE_COUNT) {
+            clearInterval(shuffleInterval);
+
+            setTimeout(() => {
+              game.getQuestionElement().textContent = "Which cup has YES?";
+              canClick = true;
+            }, config.SHUFFLE_SPEED);
+          }
+        }, config.SHUFFLE_SPEED);
+
+        registerInterval(shuffleInterval);
+      }, config.SHOW_DURATION + 500);
+
+      registerInterval(startShuffling);
+
+      let hoveredCup = null;
+
+      canvas.addEventListener("mousemove", (event) => {
+        if (!canClick) return;
+
+        const rect = canvas.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(
+          cups.map((c) => c.mesh),
+        );
+
+        if (intersects.length > 0) {
+          const newHovered = intersects[0].object.userData.cup;
+          if (newHovered !== hoveredCup) {
+            if (hoveredCup) {
+              hoveredCup.mesh.material.emissive.setHex(0x000000);
+            }
+            hoveredCup = newHovered;
+            hoveredCup.mesh.material.emissive.setHex(0x333333);
+            canvas.style.cursor = "pointer";
+          }
+        } else {
+          if (hoveredCup) {
+            hoveredCup.mesh.material.emissive.setHex(0x000000);
+            hoveredCup = null;
+          }
+          canvas.style.cursor = "default";
+        }
+      });
+
+      canvas.addEventListener("click", (event) => {
+        if (!canClick) return;
+
+        const rect = canvas.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(
+          cups.map((c) => c.mesh),
+        );
+
+        if (intersects.length > 0) {
+          const clickedCup = intersects[0].object.userData.cup;
+          canClick = false;
+          canvas.style.cursor = "default";
+          clearAllIntervals();
+
+          clickedCup.mesh.position.y = config.LIFT_HEIGHT;
+          clickedCup.textPlane.visible = true;
+
+          setTimeout(() => {
+            if (clickedCup.hasYes) {
+              game.nextLevel();
+            } else {
+              game.die();
+            }
+          }, 1500);
+        }
+      });
     },
   },
 
@@ -555,23 +820,82 @@ const levels = [
         game.getQuestionElement().textContent = "What was the pattern?";
 
         const container = game.getButtonsElement();
+        container.style.display = "grid";
+        container.style.gridTemplateColumns = "repeat(2, 1fr)";
+        container.style.gap = "15px";
 
-        const options = [correctPattern];
-
-        while (options.length < config.OPTION_COUNT) {
+        const generateWrongPattern = (strategy) => {
           let wrongPattern = "";
-          for (let i = 0; i < config.PATTERN_LENGTH; i++) {
-            if (Math.random() < 0.3) {
-              wrongPattern += correctPattern[i];
-            } else {
+
+          switch (strategy) {
+            case "swap_two": {
+              wrongPattern = correctPattern;
+              const i = Math.floor(Math.random() * (config.PATTERN_LENGTH - 1));
+              wrongPattern =
+                wrongPattern.substring(0, i) +
+                wrongPattern[i + 1] +
+                wrongPattern[i] +
+                wrongPattern.substring(i + 2);
+              break;
+            }
+            case "change_one": {
+              const i = Math.floor(Math.random() * config.PATTERN_LENGTH);
               const chars = config.CHARACTERS.filter(
                 (c) => c !== correctPattern[i],
               );
-              wrongPattern += chars[Math.floor(Math.random() * chars.length)];
+              wrongPattern =
+                correctPattern.substring(0, i) +
+                chars[Math.floor(Math.random() * chars.length)] +
+                correctPattern.substring(i + 1);
+              break;
+            }
+            case "reverse": {
+              wrongPattern = correctPattern.split("").reverse().join("");
+              break;
+            }
+            case "rotate": {
+              const shift = Math.floor(Math.random() * config.PATTERN_LENGTH) + 1;
+              wrongPattern =
+                correctPattern.substring(shift) + correctPattern.substring(0, shift);
+              break;
+            }
+            default: {
+              for (let i = 0; i < config.PATTERN_LENGTH; i++) {
+                if (Math.random() < 0.4) {
+                  wrongPattern += correctPattern[i];
+                } else {
+                  const chars = config.CHARACTERS.filter(
+                    (c) => c !== correctPattern[i],
+                  );
+                  wrongPattern +=
+                    chars[Math.floor(Math.random() * chars.length)];
+                }
+              }
             }
           }
 
-          if (!options.includes(wrongPattern)) {
+          return wrongPattern;
+        };
+
+        const options = [correctPattern];
+        const strategies = [
+          "swap_two",
+          "swap_two",
+          "change_one",
+          "change_one",
+          "reverse",
+          "rotate",
+          "random",
+        ];
+
+        let attempts = 0;
+        while (options.length < config.OPTION_COUNT && attempts < 100) {
+          attempts++;
+          const strategy =
+            strategies[Math.floor(Math.random() * strategies.length)];
+          const wrongPattern = generateWrongPattern(strategy);
+
+          if (!options.includes(wrongPattern) && wrongPattern !== correctPattern) {
             options.push(wrongPattern);
           }
         }
@@ -582,7 +906,7 @@ const levels = [
           const btn = createButton(
             pattern,
             pattern === correctPattern ? game.nextLevel : game.die,
-            { letterSpacing: "3px" },
+            { letterSpacing: "3px", fontSize: "1.1rem" },
           );
           container.appendChild(btn);
         });
@@ -644,4 +968,124 @@ document.addEventListener("DOMContentLoaded", () => {
   }, 1000);
 
   registerPersistentInterval(timerInterval);
+
+  const debugPanel = getElement("debug-panel");
+  const debugToggle = getElement("debug-toggle");
+  const debugClose = getElement("debug-close");
+
+  if (debugToggle && debugPanel) {
+    debugToggle.addEventListener("click", () => {
+      const isVisible = debugPanel.style.display === "block";
+      debugPanel.style.display = isVisible ? "none" : "block";
+    });
+  }
+
+  if (debugClose && debugPanel) {
+    debugClose.addEventListener("click", () => {
+      debugPanel.style.display = "none";
+    });
+  }
+
+  const debugSkip = getElement("debug-skip");
+  if (debugSkip) {
+    debugSkip.addEventListener("click", () => {
+      game.nextLevel();
+    });
+  }
+
+  const debugWin = getElement("debug-win");
+  if (debugWin) {
+    debugWin.addEventListener("click", () => {
+      game.victory();
+    });
+  }
+
+  const debugDie = getElement("debug-die");
+  if (debugDie) {
+    debugDie.addEventListener("click", () => {
+      game.die();
+    });
+  }
+
+  const debugGoto = getElement("debug-goto");
+  const debugGotoBtn = getElement("debug-goto-btn");
+  if (debugGoto && debugGotoBtn) {
+    debugGotoBtn.addEventListener("click", () => {
+      const targetLevel = parseInt(debugGoto.value, 10);
+      if (targetLevel >= 1 && targetLevel <= levels.length) {
+        clearAllIntervals();
+        gameState.currentLevel = targetLevel;
+        renderLevel();
+      }
+    });
+  }
+
+  const debugClearScores = getElement("debug-clear-scores");
+  if (debugClearScores) {
+    debugClearScores.addEventListener("click", () => {
+      if (confirm("Clear all high scores? This cannot be undone.")) {
+        storage.set(GAME_CONFIG.SCORES_KEY, "[]");
+        alert("High scores cleared!");
+      }
+    });
+  }
+
+  const debugClearProgress = getElement("debug-clear-progress");
+  if (debugClearProgress) {
+    debugClearProgress.addEventListener("click", () => {
+      if (confirm("Clear your progress? This cannot be undone.")) {
+        storage.set(GAME_CONFIG.LEVEL_KEY, "1");
+        storage.set(GAME_CONFIG.ATTEMPTS_KEY, "0");
+        gameState.currentLevel = 1;
+        gameState.totalAttempts = 0;
+        clearAllIntervals();
+        renderLevel();
+        alert("Progress cleared!");
+      }
+    });
+  }
+
+  const debugClearAll = getElement("debug-clear-all");
+  if (debugClearAll) {
+    debugClearAll.addEventListener("click", () => {
+      if (
+        confirm(
+          "Clear EVERYTHING (scores, progress, all data)? This cannot be undone!",
+        )
+      ) {
+        storage.set(GAME_CONFIG.SCORES_KEY, "[]");
+        storage.set(GAME_CONFIG.LEVEL_KEY, "1");
+        storage.set(GAME_CONFIG.ATTEMPTS_KEY, "0");
+        storage.set("justDied", "false");
+        storage.set("hasWon", "false");
+        storage.set("victoryTime", "0");
+        gameState.currentLevel = 1;
+        gameState.totalAttempts = 0;
+        clearAllIntervals();
+        renderLevel();
+        alert("Everything cleared!");
+      }
+    });
+  }
+
+  const debugResetTimer = getElement("debug-reset-timer");
+  if (debugResetTimer) {
+    debugResetTimer.addEventListener("click", () => {
+      gameState.startTime = Date.now();
+    });
+  }
+
+  const debugAddTime = getElement("debug-add-time");
+  if (debugAddTime) {
+    debugAddTime.addEventListener("click", () => {
+      gameState.startTime -= 10000;
+    });
+  }
+
+  const debugSubTime = getElement("debug-sub-time");
+  if (debugSubTime) {
+    debugSubTime.addEventListener("click", () => {
+      gameState.startTime += 10000;
+    });
+  }
 });

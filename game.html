@@ -7,9 +7,63 @@
       content="width=device-width, initial-scale=1.0" />
     <title>Don't Close This</title>
     <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="game.js" defer></script>
   </head>
   <body>
+    <div id="debug-panel" class="debug-panel" style="display: none;">
+      <div class="debug-header">
+        <h3>DEBUG PANEL</h3>
+        <button id="debug-close" class="debug-btn-small">×</button>
+      </div>
+      <div class="debug-content">
+        <div class="debug-section">
+          <h4>Level Control</h4>
+          <div class="debug-controls">
+            <button id="debug-skip" class="debug-btn">Skip to Next Level</button>
+            <button id="debug-win" class="debug-btn">Trigger Victory</button>
+            <button id="debug-die" class="debug-btn">Trigger Death</button>
+          </div>
+          <div class="debug-controls">
+            <label for="debug-goto">Jump to Level:</label>
+            <select id="debug-goto" class="debug-select">
+              <option value="1">Level 1</option>
+              <option value="2">Level 2</option>
+              <option value="3">Level 3</option>
+              <option value="4">Level 4</option>
+              <option value="5">Level 5</option>
+              <option value="6">Level 6</option>
+              <option value="7">Level 7</option>
+              <option value="8">Level 8</option>
+              <option value="9">Level 9</option>
+              <option value="10">Level 10</option>
+            </select>
+            <button id="debug-goto-btn" class="debug-btn-small">Go</button>
+          </div>
+        </div>
+
+        <div class="debug-section">
+          <h4>Data Management</h4>
+          <div class="debug-controls">
+            <button id="debug-clear-scores" class="debug-btn">Clear High Scores</button>
+            <button id="debug-clear-progress" class="debug-btn">Clear Progress</button>
+            <button id="debug-clear-all" class="debug-btn debug-btn-danger">Clear Everything</button>
+          </div>
+        </div>
+
+        <div class="debug-section">
+          <h4>Timer Control</h4>
+          <div class="debug-controls">
+            <button id="debug-reset-timer" class="debug-btn">Reset Timer</button>
+            <button id="debug-add-time" class="debug-btn-small">+10s</button>
+            <button id="debug-sub-time" class="debug-btn-small">-10s</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button id="debug-toggle" class="debug-toggle" title="Toggle Debug Panel">🐛</button>
+
     <div id="meta-panel">
       <div class="meta-item">
         <span class="meta-label">LEVEL</span>

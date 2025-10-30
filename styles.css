@@ -342,6 +342,177 @@ button:disabled {
 }
 
 /* =================================
+   DEBUG PANEL STYLES
+   ================================= */
+
+.debug-panel {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #f0f0f0;
+  border: 3px solid #000;
+  -webkit-box-shadow: 5px 5px 0px #000;
+  box-shadow: 5px 5px 0px #000;
+  z-index: 1000;
+  width: 300px;
+  max-height: 450px;
+  overflow-y: auto;
+}
+
+.debug-header {
+  background: #000;
+  color: #fff;
+  padding: 8px 12px;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-pack: justify;
+  -ms-flex-pack: justify;
+  justify-content: space-between;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+}
+
+.debug-header h3 {
+  margin: 0;
+  font-size: 0.85rem;
+  letter-spacing: 1.5px;
+}
+
+.debug-content {
+  padding: 12px;
+}
+
+.debug-section {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #ccc;
+}
+
+.debug-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.debug-section h4 {
+  margin: 0 0 8px 0;
+  font-size: 0.75rem;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.debug-controls {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex-wrap: wrap;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+}
+
+.debug-controls:last-child {
+  margin-bottom: 0;
+}
+
+.debug-controls label {
+  font-size: 0.75rem;
+  color: #333;
+  width: 100%;
+  margin-bottom: 2px;
+}
+
+.debug-btn,
+.debug-btn-small {
+  background: #fff;
+  color: #000;
+  border: 2px solid #000;
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: bold;
+  cursor: pointer;
+  -webkit-transition: all 0.2s ease;
+  -o-transition: all 0.2s ease;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  -webkit-box-flex: 1;
+  -ms-flex: 1;
+  flex: 1;
+}
+
+.debug-btn-small {
+  padding: 5px 8px;
+  font-size: 0.65rem;
+  -webkit-box-flex: 0;
+  -ms-flex: 0 0 auto;
+  flex: 0 0 auto;
+}
+
+.debug-btn:hover,
+.debug-btn-small:hover {
+  background: #000;
+  color: #fff;
+  -webkit-transform: translate(-2px, -2px);
+  -ms-transform: translate(-2px, -2px);
+  transform: translate(-2px, -2px);
+  -webkit-box-shadow: 2px 2px 0px #000;
+  box-shadow: 2px 2px 0px #000;
+}
+
+.debug-btn-danger {
+  background: #ff4444;
+  color: #fff;
+}
+
+.debug-btn-danger:hover {
+  background: #cc0000;
+  color: #fff;
+}
+
+.debug-select {
+  background: #fff;
+  border: 2px solid #000;
+  padding: 5px 8px;
+  font-family: inherit;
+  font-size: 0.7rem;
+  cursor: pointer;
+  -webkit-box-flex: 1;
+  -ms-flex: 1;
+  flex: 1;
+}
+
+.debug-toggle {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #ffeb3b;
+  border: 2px solid #000;
+  padding: 10px 14px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  -webkit-transition: all 0.2s ease;
+  -o-transition: all 0.2s ease;
+  transition: all 0.2s ease;
+  z-index: 999;
+  -webkit-box-shadow: 3px 3px 0px #000;
+  box-shadow: 3px 3px 0px #000;
+}
+
+.debug-toggle:hover {
+  background: #ffc107;
+  -webkit-transform: scale(1.1);
+  -ms-transform: scale(1.1);
+  transform: scale(1.1);
+}
+
+/* =================================
    MOBILE RESPONSIVE
    ================================= */
 

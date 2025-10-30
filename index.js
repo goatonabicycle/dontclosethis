@@ -172,15 +172,7 @@ function handleKeyPress(event) {
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  const initialsInput = document.getElementById("initials");
-  const startBtn = document.getElementById("start-btn");
-
-  if (!initialsInput || !startBtn) {
-    console.error("Required elements not found");
-    return;
-  }
-
+function checkGameMessages() {
   const justDied = storage.get("justDied");
   if (justDied === "true") {
     const gameOverMsg = document.getElementById("game-over-message");
@@ -208,6 +200,18 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     storage.set("hasWon", "false");
   }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const initialsInput = document.getElementById("initials");
+  const startBtn = document.getElementById("start-btn");
+
+  if (!initialsInput || !startBtn) {
+    console.error("Required elements not found");
+    return;
+  }
+
+  checkGameMessages();
 
   const savedInitials = storage.get(STORAGE_KEYS.PLAYER_INITIALS);
   if (savedInitials) {
@@ -221,5 +225,8 @@ document.addEventListener("DOMContentLoaded", () => {
   startBtn.addEventListener("click", startGame);
 
   loadHighScores();
-  window.addEventListener("focus", loadHighScores);
+  window.addEventListener("focus", () => {
+    loadHighScores();
+    checkGameMessages();
+  });
 });
