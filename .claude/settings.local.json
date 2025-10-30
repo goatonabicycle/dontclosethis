@@ -1,6 +1,11 @@
 {
   "permissions": {
-    "allow": ["Bash(npm run check:*)"],
+    "allow": [
+      "Bash(npm run check:*)",
+      "Bash(npm run check:biome:*)",
+      "Bash(start game.html)",
+      "Bash(start:*)"
+    ],
     "deny": [],
     "ask": []
   }

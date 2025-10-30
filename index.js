@@ -173,27 +173,41 @@ function handleKeyPress(event) {
 }
 
 function checkGameMessages() {
+  console.log("INDEX.HTML origin:", window.location.origin);
+  console.log(
+    "Direct localStorage.getItem('justDied'):",
+    localStorage.getItem("justDied"),
+  );
   const justDied = storage.get("justDied");
+  console.log("Checking justDied:", justDied);
   if (justDied === "true") {
+    console.log("!!!!! FOUND justDied = true! Showing message !!!!!");
     const gameOverMsg = document.getElementById("game-over-message");
+    console.log("Game over message element:", gameOverMsg);
     if (gameOverMsg) {
       gameOverMsg.style.display = "block";
+      console.log("Showing game over message - should be visible now!");
       setTimeout(() => {
         gameOverMsg.style.display = "none";
-      }, 3000);
+        storage.set("justDied", "false");
+      }, 5000);
+    } else {
+      storage.set("justDied", "false");
     }
-    storage.set("justDied", "false");
   }
 
   const hasWon = storage.get("hasWon");
+  console.log("Checking hasWon:", hasWon);
   if (hasWon === "true") {
     const victoryMsg = document.getElementById("victory-message");
     const victoryTimeSpan = document.getElementById("victory-time");
     const victoryTime = storage.get("victoryTime");
+    console.log("Victory message element:", victoryMsg);
 
     if (victoryMsg && victoryTimeSpan) {
       victoryTimeSpan.textContent = victoryTime || "?";
       victoryMsg.style.display = "block";
+      console.log("Showing victory message");
       setTimeout(() => {
         victoryMsg.style.display = "none";
       }, 5000);
@@ -226,7 +240,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   loadHighScores();
   window.addEventListener("focus", () => {
+    console.log("Window gained focus, checking messages");
     loadHighScores();
     checkGameMessages();
   });
+
+  // Also check periodically in case focus events don't fire
+  setInterval(() => {
+    checkGameMessages();
+  }, 500);
 });

@@ -66,6 +66,12 @@ const LEVEL_CONFIG = {
     OPTION_COUNT: 8,
     DISPLAY_DURATION: 2500,
   },
+  TRIPWIRE_MAZE: {
+    PATH_WIDTH: 60,
+    SEGMENTS: 6,
+    CANVAS_WIDTH: 700,
+    CANVAS_HEIGHT: 400,
+  },
 };
 
 const gameState = {
@@ -200,7 +206,7 @@ function saveHighScore() {
 }
 
 const game = {
-  nextLevel: function () {
+  nextLevel: () => {
     clearAllIntervals();
     gameState.currentLevel++;
     if (gameState.currentLevel > levels.length) {
@@ -249,17 +255,6 @@ const game = {
 
 const levels = [
   {
-    render: () => {
-      game.getQuestionElement().innerHTML = `
-        <div style="margin-bottom: 30px; font-size: 1.2rem; line-height: 1.8;">
-          It's violently critical to keep this tab open.<br>Is that clear?
-        </div>
-      `;
-      const btn = createButton("YES", game.nextLevel);
-      game.getButtonsElement().appendChild(btn);
-    },
-  },
-
   {
     render: () => {
       game.getQuestionElement().textContent = "Do you want to continue?";
@@ -548,12 +543,7 @@ const levels = [
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0x2a2a2a);
 
-      const camera = new THREE.PerspectiveCamera(
-        50,
-        width / height,
-        0.1,
-        1000,
-      );
+      const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
       camera.position.set(0, 5, 8);
       camera.lookAt(0, 0, 0);
 
@@ -745,9 +735,7 @@ const levels = [
         mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
         raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObjects(
-          cups.map((c) => c.mesh),
-        );
+        const intersects = raycaster.intersectObjects(cups.map((c) => c.mesh));
 
         if (intersects.length > 0) {
           const newHovered = intersects[0].object.userData.cup;
@@ -776,9 +764,7 @@ const levels = [
         mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
         raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObjects(
-          cups.map((c) => c.mesh),
-        );
+        const intersects = raycaster.intersectObjects(cups.map((c) => c.mesh));
 
         if (intersects.length > 0) {
           const clickedCup = intersects[0].object.userData.cup;
@@ -854,9 +840,11 @@ const levels = [
               break;
             }
             case "rotate": {
-              const shift = Math.floor(Math.random() * config.PATTERN_LENGTH) + 1;
+              const shift =
+                Math.floor(Math.random() * config.PATTERN_LENGTH) + 1;
               wrongPattern =
-                correctPattern.substring(shift) + correctPattern.substring(0, shift);
+                correctPattern.substring(shift) +
+                correctPattern.substring(0, shift);
               break;
             }
             default: {
@@ -895,7 +883,10 @@ const levels = [
             strategies[Math.floor(Math.random() * strategies.length)];
           const wrongPattern = generateWrongPattern(strategy);
 
-          if (!options.includes(wrongPattern) && wrongPattern !== correctPattern) {
+          if (
+            !options.includes(wrongPattern) &&
+            wrongPattern !== correctPattern
+          ) {
             options.push(wrongPattern);
           }
         }
@@ -927,15 +918,30 @@ function renderLevel() {
 
   const questionEl = game.getQuestionElement();
   const buttonsEl = game.getButtonsElement();
+  const metaPanel = document.getElementById("meta-panel");
+  const container = game.getContainer();
 
+  // Reset all element styles to defaults
   questionEl.textContent = "";
   questionEl.innerHTML = "";
+  questionEl.style.cssText = "";
   buttonsEl.innerHTML = "";
   buttonsEl.style.cssText = "";
 
-  const container = game.getContainer();
+  // Reset meta panel visibility
+  if (metaPanel) {
+    metaPanel.style.display = "";
+  }
+
+  // Reset container styles (but preserve necessary ones)
+  container.style.maxWidth = "";
+  container.style.padding = "";
+  container.style.margin = "";
   container.style.opacity = "0";
   container.style.transition = "opacity 0.3s ease";
+
+  // Reset body cursor
+  document.body.style.cursor = "";
 
   setTimeout(() => {
     container.style.opacity = "1";
@@ -1089,3 +1095,293 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
+    render: () => {
+      const config = LEVEL_CONFIG.TRIPWIRE_MAZE;
+
+      // Position the meta panel at the top center
+      const metaPanel = document.getElementById("meta-panel");
+      if (metaPanel) {
+        metaPanel.style.position = "fixed";
+        metaPanel.style.top = "20px";
+        metaPanel.style.left = "50%";
+        metaPanel.style.transform = "translateX(-50%)";
+        metaPanel.style.zIndex = "1000";
+      }
+
+      game.getQuestionElement().innerHTML =
+        "Navigate your mouse from START to the YES button without touching the walls.";
+
+      const container = game.getButtonsElement();
+      container.style.display = "block";
+      container.style.width = "100vw";
+      container.style.height = "100vh";
+      container.style.position = "fixed";
+      container.style.top = "0";
+      container.style.left = "0";
+      container.style.margin = "0";
+      container.style.padding = "0";
+
+      const canvas = document.createElement("canvas");
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      canvas.style.width = "100%";
+      canvas.style.height = "100%";
+      canvas.style.display = "block";
+      canvas.style.background = "#fff";
+      canvas.style.cursor = "none";
+      container.appendChild(canvas);
+
+      // Create custom cursor - simple black dot
+      const cursorDot = document.createElement("div");
+      cursorDot.className = "custom-cursor-dot";
+      cursorDot.style.position = "fixed";
+      cursorDot.style.width = "10px";
+      cursorDot.style.height = "10px";
+      cursorDot.style.borderRadius = "50%";
+      cursorDot.style.background = "#000";
+      cursorDot.style.pointerEvents = "none";
+      cursorDot.style.zIndex = "10001";
+      cursorDot.style.transform = "translate(-50%, -50%)";
+      cursorDot.style.display = "none";
+      document.body.appendChild(cursorDot);
+
+      const ctx = canvas.getContext("2d");
+
+      // Start zone on the left side, vertically centered
+      const startZone = {
+        x: 50,
+        y: canvas.height / 2 - 60,
+        width: 80,
+        height: 120,
+      };
+
+      const endZone = {
+        x: canvas.width - 130,
+        y: canvas.height / 2 - 60,
+        width: 80,
+        height: 120,
+      };
+
+      // Generate path points - start from LEFT of start zone, go through it
+      const pathPoints = [
+        {
+          x: startZone.x,
+          y: startZone.y + startZone.height / 2,
+        },
+        {
+          x: startZone.x + startZone.width,
+          y: startZone.y + startZone.height / 2,
+        },
+      ];
+
+      const segmentWidth =
+        (endZone.x - startZone.x - startZone.width) / config.SEGMENTS;
+
+      for (let i = 1; i < config.SEGMENTS; i++) {
+        const x = startZone.x + startZone.width + i * segmentWidth;
+        const y = canvas.height * 0.2 + Math.random() * (canvas.height * 0.6);
+        pathPoints.push({ x, y });
+      }
+
+      pathPoints.push({ x: endZone.x, y: endZone.y + endZone.height / 2 });
+      pathPoints.push({
+        x: endZone.x + endZone.width,
+        y: endZone.y + endZone.height / 2,
+      });
+
+      let isMouseInBounds = false;
+      let hasStarted = false;
+      let hasWon = false;
+      let mazeRevealed = false;
+
+      function isPointInPath(x, y) {
+        // Check if coordinates are valid
+        if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) {
+          return false;
+        }
+        const imageData = ctx.getImageData(x, y, 1, 1).data;
+        const r = imageData[0];
+        const g = imageData[1];
+        const b = imageData[2];
+
+        // White path (255,255,255) or black buttons (0,0,0) are safe
+        // Gray walls (#ccc = 204,204,204) are dangerous
+        const isWhite = r > 240 && g > 240 && b > 240;
+        const isBlack = r < 20 && g < 20 && b < 20;
+
+        return isWhite || isBlack;
+      }
+
+      function isInStartZone(x, y) {
+        return (
+          x >= startZone.x &&
+          x <= startZone.x + startZone.width &&
+          y >= startZone.y &&
+          y <= startZone.y + startZone.height
+        );
+      }
+
+      function isInEndZone(x, y) {
+        return (
+          x >= endZone.x &&
+          x <= endZone.x + endZone.width &&
+          y >= endZone.y &&
+          y <= endZone.y + endZone.height
+        );
+      }
+
+      function drawInitialScreen() {
+        // White background
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw START zone as a section of the path
+        // Black border
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = config.PATH_WIDTH + 6;
+        ctx.lineCap = "butt";
+        ctx.beginPath();
+        ctx.moveTo(startZone.x, startZone.y + startZone.height / 2);
+        ctx.lineTo(startZone.x + startZone.width, startZone.y + startZone.height / 2);
+        ctx.stroke();
+
+        // White center
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = config.PATH_WIDTH;
+        ctx.lineCap = "butt";
+        ctx.beginPath();
+        ctx.moveTo(startZone.x, startZone.y + startZone.height / 2);
+        ctx.lineTo(startZone.x + startZone.width, startZone.y + startZone.height / 2);
+        ctx.stroke();
+
+        // Draw left border using stroke to match the path border style
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = 3;
+        ctx.lineCap = "butt";
+        ctx.beginPath();
+        ctx.moveTo(startZone.x, startZone.y + startZone.height / 2 - (config.PATH_WIDTH + 6) / 2);
+        ctx.lineTo(startZone.x, startZone.y + startZone.height / 2 + (config.PATH_WIDTH + 6) / 2);
+        ctx.stroke();
+
+        // START text in black
+        ctx.font = "bold 16px Arial";
+        ctx.fillStyle = "#000";
+        ctx.textAlign = "center";
+        ctx.fillText(
+          "START",
+          startZone.x + startZone.width / 2,
+          startZone.y + startZone.height / 2 + 6,
+        );
+      }
+
+      function revealMaze() {
+        // Draw white background
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw the gray walls background
+        ctx.fillStyle = "#ddd";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw black border around the path (includes start and end zones)
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = config.PATH_WIDTH + 6;
+        ctx.lineCap = "butt";
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        ctx.moveTo(pathPoints[0].x, pathPoints[0].y);
+        for (let i = 1; i < pathPoints.length; i++) {
+          ctx.lineTo(pathPoints[i].x, pathPoints[i].y);
+        }
+        ctx.stroke();
+
+        // Draw the white safe path on top
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = config.PATH_WIDTH;
+        ctx.lineCap = "butt";
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        ctx.moveTo(pathPoints[0].x, pathPoints[0].y);
+        for (let i = 1; i < pathPoints.length; i++) {
+          ctx.lineTo(pathPoints[i].x, pathPoints[i].y);
+        }
+        ctx.stroke();
+      }
+
+      // Create YES button (hidden initially)
+      const yesButton = createButton("YES", () => {
+        // Remove button and cursor dot before transitioning
+        yesButton.remove();
+        cursorDot.remove();
+        game.nextLevel();
+      });
+      yesButton.style.position = "fixed";
+      yesButton.style.left = `${endZone.x + endZone.width / 2}px`;
+      yesButton.style.top = `${endZone.y + endZone.height / 2}px`;
+      yesButton.style.transform = "translate(-50%, -50%)";
+      yesButton.style.display = "none";
+      yesButton.style.zIndex = "10000";
+      yesButton.style.padding = "10px 20px";
+      yesButton.style.fontSize = "16px";
+      yesButton.style.cursor = "pointer";
+      yesButton.style.pointerEvents = "auto";
+      document.body.appendChild(yesButton);
+
+      // Initial draw
+      drawInitialScreen();
+
+      // Track cursor position
+      document.addEventListener("mousemove", (e) => {
+        cursorDot.style.left = `${e.clientX}px`;
+        cursorDot.style.top = `${e.clientY}px`;
+      });
+
+      canvas.addEventListener("mouseenter", (e) => {
+        isMouseInBounds = true;
+        cursorDot.style.display = "block";
+        const x = e.clientX;
+        const y = e.clientY;
+
+        // Only die if maze is revealed and entering at unsafe location
+        if (mazeRevealed && hasStarted && !isPointInPath(x, y)) {
+          game.die();
+        }
+      });
+
+      canvas.addEventListener("mouseleave", () => {
+        isMouseInBounds = false;
+        cursorDot.style.display = "none";
+        if (mazeRevealed && hasStarted && !hasWon) {
+          game.die();
+        }
+      });
+
+      canvas.addEventListener("mousemove", (e) => {
+        if (!isMouseInBounds || hasWon) return;
+
+        const x = e.clientX;
+        const y = e.clientY;
+
+        // Check if mouse enters start zone
+        if (!hasStarted && isInStartZone(x, y)) {
+          hasStarted = true;
+          mazeRevealed = true;
+          revealMaze();
+        }
+
+        // After maze is revealed, check for collisions
+        if (mazeRevealed && hasStarted) {
+          if (isInEndZone(x, y)) {
+            hasWon = true;
+            // Show YES button and hide custom cursor
+            yesButton.style.display = "block";
+            cursorDot.style.display = "none";
+            canvas.style.cursor = "default";
+          } else if (!isPointInPath(x, y)) {
+            game.die();
+          }
+        }
+      });
+    },
+  },
