@@ -72,6 +72,23 @@ const LEVEL_CONFIG = {
     CANVAS_WIDTH: 700,
     CANVAS_HEIGHT: 400,
   },
+  GROWING_DANGER: {
+    INITIAL_NO_SIZE: 60,
+    GROWTH_RATE: 15,
+    YES_SIZE: 70,
+    PHYSICS_ENABLED: true,
+    PUSH_FORCE: 15,
+    NO_COUNT: 5,
+    SPAWN_DELAY: 300,
+    YES_COUNT: 5,
+    DEATH_THRESHOLD: 0.9,
+  },
+  PRECISE_TIMING: {
+    MIN_TARGET_START: 8,
+    MAX_TARGET_START: 12,
+    WINDOW_SIZE: 1,
+    TIMER_HIDE_BEFORE: 5,
+  },
 };
 
 const gameState = {
@@ -256,6 +273,229 @@ const game = {
 const levels = [
   {
     render: () => {
+      const config = LEVEL_CONFIG.GROWING_DANGER;
+
+      // Position the meta panel at the top center
+      const metaPanel = document.getElementById("meta-panel");
+      if (metaPanel) {
+        metaPanel.style.position = "fixed";
+        metaPanel.style.top = "20px";
+        metaPanel.style.left = "50%";
+        metaPanel.style.transform = "translateX(-50%)";
+        metaPanel.style.zIndex = "1000";
+      }
+
+      game.getQuestionElement().textContent = "Click all 5 YES buttons before you're drowned out!";
+
+      const container = game.getButtonsElement();
+      container.style.position = "fixed";
+      container.style.width = "100vw";
+      container.style.height = "100vh";
+      container.style.top = "0";
+      container.style.left = "0";
+      container.style.margin = "0";
+      container.style.padding = "0";
+      container.style.overflow = "hidden";
+      container.style.background = "#fff";
+
+      const screenWidth = window.innerWidth;
+      const screenHeight = window.innerHeight;
+
+      // Create multiple NO buttons from random positions
+      const noButtons = [];
+      const spawnPositions = [
+        { x: 0.2, y: 0.2 },
+        { x: 0.8, y: 0.2 },
+        { x: 0.5, y: 0.5 },
+        { x: 0.2, y: 0.8 },
+        { x: 0.8, y: 0.8 },
+      ];
+
+      for (let i = 0; i < config.NO_COUNT; i++) {
+        const pos = spawnPositions[i];
+        const noBtn = createButton("NO", game.die);
+        noBtn.style.position = "absolute";
+        noBtn.style.transition = "none";
+        noBtn.style.fontSize = "24px";
+        noBtn.style.fontWeight = "bold";
+        noBtn.style.padding = "0";
+        noBtn.style.display = "none";
+        noBtn.style.alignItems = "center";
+        noBtn.style.justifyContent = "center";
+        noBtn.style.borderRadius = "50%";
+        noBtn.style.background = "#ff0000";
+        noBtn.style.color = "#fff";
+        noBtn.style.border = "3px solid #000";
+        noBtn.style.zIndex = "5";
+
+        container.appendChild(noBtn);
+
+        noButtons.push({
+          element: noBtn,
+          size: 0,
+          x: screenWidth * pos.x,
+          y: screenHeight * pos.y,
+          active: false,
+          spawnTime: i * config.SPAWN_DELAY,
+        });
+      }
+
+      // Create 5 YES buttons (small, get pushed around)
+      const yesButtons = [];
+      let clickedCount = 0;
+
+      const yesStartPositions = [
+        { x: 0.3, y: 0.3 },
+        { x: 0.7, y: 0.3 },
+        { x: 0.5, y: 0.5 },
+        { x: 0.3, y: 0.7 },
+        { x: 0.7, y: 0.7 },
+      ];
+
+      for (let i = 0; i < config.YES_COUNT; i++) {
+        const pos = yesStartPositions[i];
+        const yesBtn = createButton("YES", () => {
+          if (!yesBtn.dataset.clicked) {
+            yesBtn.dataset.clicked = "true";
+            yesBtn.style.opacity = "0.3";
+            yesBtn.style.pointerEvents = "none";
+            clickedCount++;
+
+            if (clickedCount === config.YES_COUNT) {
+              game.nextLevel();
+            }
+          }
+        });
+        yesBtn.style.position = "absolute";
+        yesBtn.style.transition = "none";
+        yesBtn.style.fontSize = "16px";
+        yesBtn.style.fontWeight = "bold";
+        yesBtn.style.padding = "0";
+        yesBtn.style.display = "flex";
+        yesBtn.style.alignItems = "center";
+        yesBtn.style.justifyContent = "center";
+        yesBtn.style.zIndex = "10";
+        yesBtn.style.borderRadius = "8px";
+        yesBtn.style.background = "#00ff00";
+        yesBtn.style.color = "#000";
+
+        container.appendChild(yesBtn);
+
+        yesButtons.push({
+          element: yesBtn,
+          size: config.YES_SIZE,
+          x: screenWidth * pos.x - config.YES_SIZE / 2,
+          y: screenHeight * pos.y - config.YES_SIZE / 2,
+          velX: 0,
+          velY: 0,
+        });
+      }
+
+      let elapsedTime = 0;
+
+      function checkCollisions() {
+        // Check collision for each YES button with all active NO buttons
+        yesButtons.forEach(yes => {
+          const yesCenterX = yes.x + yes.size / 2;
+          const yesCenterY = yes.y + yes.size / 2;
+
+          noButtons.forEach(no => {
+            if (!no.active) return;
+
+            const noCenterX = no.x;
+            const noCenterY = no.y;
+
+            const dx = yesCenterX - noCenterX;
+            const dy = yesCenterY - noCenterY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const minDistance = (no.size / 2 + yes.size / 2);
+
+            if (distance < minDistance) {
+              // Push YES button away violently
+              const angle = Math.atan2(dy, dx);
+              const overlap = minDistance - distance;
+
+              yes.velX += Math.cos(angle) * config.PUSH_FORCE;
+              yes.velY += Math.sin(angle) * config.PUSH_FORCE;
+
+              yes.x += Math.cos(angle) * overlap;
+              yes.y += Math.sin(angle) * overlap;
+            }
+          });
+        });
+      }
+
+      function updatePhysics() {
+        elapsedTime += 50;
+
+        // Activate and grow NO buttons
+        noButtons.forEach(no => {
+          if (!no.active && elapsedTime >= no.spawnTime) {
+            no.active = true;
+            no.size = config.INITIAL_NO_SIZE;
+            no.element.style.display = "flex";
+          }
+
+          if (no.active) {
+            no.size += config.GROWTH_RATE;
+            no.element.style.width = `${no.size}px`;
+            no.element.style.height = `${no.size}px`;
+            no.element.style.left = `${no.x - no.size / 2}px`;
+            no.element.style.top = `${no.y - no.size / 2}px`;
+          }
+        });
+
+        // Update each YES button
+        yesButtons.forEach(yes => {
+          // Apply velocity
+          yes.x += yes.velX;
+          yes.y += yes.velY;
+
+          // Less friction for more violent movement
+          yes.velX *= 0.92;
+          yes.velY *= 0.92;
+
+          // Bounce off walls with more energy retention
+          if (yes.x < 0) {
+            yes.x = 0;
+            yes.velX = Math.abs(yes.velX) * 0.7;
+          }
+          if (yes.x + yes.size > screenWidth) {
+            yes.x = screenWidth - yes.size;
+            yes.velX = -Math.abs(yes.velX) * 0.7;
+          }
+          if (yes.y < 80) {
+            yes.y = 80;
+            yes.velY = Math.abs(yes.velY) * 0.7;
+          }
+          if (yes.y + yes.size > screenHeight) {
+            yes.y = screenHeight - yes.size;
+            yes.velY = -Math.abs(yes.velY) * 0.7;
+          }
+
+          // Update position
+          yes.element.style.width = `${yes.size}px`;
+          yes.element.style.height = `${yes.size}px`;
+          yes.element.style.left = `${yes.x}px`;
+          yes.element.style.top = `${yes.y}px`;
+        });
+
+        checkCollisions();
+
+        // Check if NO buttons have covered too much screen (dies sooner)
+        const largestNo = Math.max(...noButtons.filter(n => n.active).map(n => n.size));
+        if (largestNo > Math.max(screenWidth, screenHeight) * config.DEATH_THRESHOLD) {
+          game.die();
+        }
+      }
+
+      const physicsInterval = setInterval(updatePhysics, 50);
+      registerInterval(physicsInterval);
+    },
+  },
+
+  {
+    render: () => {
       game.getQuestionElement().textContent = "Do you want to continue?";
 
       const yesBtn = createButton("YES", game.nextLevel);
@@ -264,6 +504,54 @@ const levels = [
       const container = game.getButtonsElement();
       container.appendChild(yesBtn);
       container.appendChild(noBtn);
+    },
+  },
+
+  {
+    render: () => {
+      const config = LEVEL_CONFIG.PRECISE_TIMING;
+
+      // Random target window
+      const targetStart = Math.random() * (config.MAX_TARGET_START - config.MIN_TARGET_START) + config.MIN_TARGET_START;
+      const targetEnd = targetStart + config.WINDOW_SIZE;
+      const hideTime = targetStart - config.TIMER_HIDE_BEFORE;
+
+      const questionEl = game.getQuestionElement();
+      questionEl.innerHTML = `Click YES between ${targetStart.toFixed(1)} and ${targetEnd.toFixed(1)} seconds!<br><span id='precise-timer' style='font-size: 3rem; font-weight: bold; color: #000;'>0.0</span>`;
+
+      const startTime = Date.now();
+      let timerVisible = true;
+
+      const yesBtn = createButton("YES", () => {
+        const elapsedSeconds = (Date.now() - startTime) / 1000;
+
+        if (elapsedSeconds >= targetStart && elapsedSeconds <= targetEnd) {
+          game.nextLevel();
+        } else {
+          game.die();
+        }
+      });
+
+      const container = game.getButtonsElement();
+      container.appendChild(yesBtn);
+
+      const timerInterval = setInterval(() => {
+        const elapsedSeconds = (Date.now() - startTime) / 1000;
+        const timerEl = getElement("precise-timer");
+
+        if (timerEl) {
+          // Hide timer when approaching target
+          if (elapsedSeconds >= hideTime && timerVisible) {
+            timerVisible = false;
+            timerEl.textContent = "???";
+            timerEl.style.color = "#999";
+          } else if (timerVisible) {
+            timerEl.textContent = elapsedSeconds.toFixed(1);
+          }
+        }
+      }, 100);
+
+      registerInterval(timerInterval);
     },
   },
 
