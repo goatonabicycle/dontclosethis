@@ -72,16 +72,10 @@ const LEVEL_CONFIG = {
     CANVAS_WIDTH: 700,
     CANVAS_HEIGHT: 400,
   },
-  GROWING_DANGER: {
-    INITIAL_NO_SIZE: 60,
-    GROWTH_RATE: 15,
-    YES_SIZE: 70,
-    PHYSICS_ENABLED: true,
-    PUSH_FORCE: 15,
-    NO_COUNT: 5,
-    SPAWN_DELAY: 300,
-    YES_COUNT: 5,
-    DEATH_THRESHOLD: 0.9,
+  PIPE_ROTATION: {
+    GRID_SIZE: 5,
+    CELL_SIZE: 80,
+    PIPE_WIDTH: 20,
   },
   PRECISE_TIMING: {
     MIN_TARGET_START: 8,
@@ -278,224 +272,431 @@ const game = {
 const levels = [
   {
     render: () => {
-      const config = LEVEL_CONFIG.GROWING_DANGER;
+      const config = LEVEL_CONFIG.PIPE_ROTATION;
 
-      // Position the meta panel at the top center
-      const metaPanel = document.getElementById("meta-panel");
-      if (metaPanel) {
-        metaPanel.style.position = "fixed";
-        metaPanel.style.top = "20px";
-        metaPanel.style.left = "50%";
-        metaPanel.style.transform = "translateX(-50%)";
-        metaPanel.style.zIndex = "1000";
-      }
-
-      game.getQuestionElement().textContent = "Click all 5 YES buttons before you're drowned out!";
+      game.getQuestionElement().textContent = "Rotate the pipes to connect the green start to the red end!";
 
       const container = game.getButtonsElement();
-      container.style.position = "fixed";
-      container.style.width = "100vw";
-      container.style.height = "100vh";
-      container.style.top = "0";
-      container.style.left = "0";
-      container.style.margin = "0";
-      container.style.padding = "0";
-      container.style.overflow = "hidden";
-      container.style.background = "#fff";
+      container.style.textAlign = "center";
+      container.style.padding = "20px";
 
-      const screenWidth = window.innerWidth;
-      const screenHeight = window.innerHeight;
+      const canvas = document.createElement("canvas");
+      const totalSize = config.GRID_SIZE * config.CELL_SIZE;
+      canvas.width = totalSize;
+      canvas.height = totalSize;
+      canvas.style.border = "3px solid #000";
+      canvas.style.background = "#fff";
+      canvas.style.cursor = "pointer";
+      canvas.style.display = "block";
+      canvas.style.margin = "20px auto";
 
-      // Create multiple NO buttons from random positions
-      const noButtons = [];
-      const spawnPositions = [
-        { x: 0.2, y: 0.2 },
-        { x: 0.8, y: 0.2 },
-        { x: 0.5, y: 0.5 },
-        { x: 0.2, y: 0.8 },
-        { x: 0.8, y: 0.8 },
-      ];
+      container.appendChild(canvas);
 
-      for (let i = 0; i < config.NO_COUNT; i++) {
-        const pos = spawnPositions[i];
-        const noBtn = createButton("NO", game.die);
-        noBtn.style.position = "absolute";
-        noBtn.style.transition = "none";
-        noBtn.style.fontSize = "24px";
-        noBtn.style.fontWeight = "bold";
-        noBtn.style.padding = "0";
-        noBtn.style.display = "none";
-        noBtn.style.alignItems = "center";
-        noBtn.style.justifyContent = "center";
-        noBtn.style.borderRadius = "50%";
-        noBtn.style.background = "#ff0000";
-        noBtn.style.color = "#fff";
-        noBtn.style.border = "3px solid #000";
-        noBtn.style.zIndex = "5";
+      const ctx = canvas.getContext("2d");
 
-        container.appendChild(noBtn);
+      const PIPE_STRAIGHT = 0;
+      const PIPE_CORNER = 1;
 
-        noButtons.push({
-          element: noBtn,
-          size: 0,
-          x: screenWidth * pos.x,
-          y: screenHeight * pos.y,
-          active: false,
-          spawnTime: i * config.SPAWN_DELAY,
-        });
-      }
+      // Generate a random winding path from start to end
+      function generateRandomPath() {
+        const path = [{x: 0, y: 0}];
+        const visited = new Set(['0,0']);
+        let current = {x: 0, y: 0};
+        const target = {x: 4, y: 4};
 
-      // Create 5 YES buttons (small, get pushed around)
-      const yesButtons = [];
-      let clickedCount = 0;
+        while (current.x !== target.x || current.y !== target.y) {
+          const possibleMoves = [];
 
-      const yesStartPositions = [
-        { x: 0.3, y: 0.3 },
-        { x: 0.7, y: 0.3 },
-        { x: 0.5, y: 0.5 },
-        { x: 0.3, y: 0.7 },
-        { x: 0.7, y: 0.7 },
-      ];
+          // Prefer moving towards target but allow some randomness
+          if (current.x < target.x) possibleMoves.push({x: current.x + 1, y: current.y, weight: 3});
+          if (current.x > target.x) possibleMoves.push({x: current.x - 1, y: current.y, weight: 3});
+          if (current.y < target.y) possibleMoves.push({x: current.x, y: current.y + 1, weight: 3});
+          if (current.y > target.y) possibleMoves.push({x: current.x, y: current.y - 1, weight: 3});
 
-      for (let i = 0; i < config.YES_COUNT; i++) {
-        const pos = yesStartPositions[i];
-        const yesBtn = createButton("YES", () => {
-          if (!yesBtn.dataset.clicked) {
-            yesBtn.dataset.clicked = "true";
-            yesBtn.style.opacity = "0.3";
-            yesBtn.style.pointerEvents = "none";
-            clickedCount++;
+          // Add other valid moves with lower weight
+          if (current.x > 0) possibleMoves.push({x: current.x - 1, y: current.y, weight: 1});
+          if (current.x < 4) possibleMoves.push({x: current.x + 1, y: current.y, weight: 1});
+          if (current.y > 0) possibleMoves.push({x: current.x, y: current.y - 1, weight: 1});
+          if (current.y < 4) possibleMoves.push({x: current.x, y: current.y + 1, weight: 1});
 
-            if (clickedCount === config.YES_COUNT) {
-              game.nextLevel();
+          // Filter out visited cells
+          const validMoves = possibleMoves.filter(m => !visited.has(`${m.x},${m.y}`));
+
+          if (validMoves.length === 0) break; // Dead end, restart
+
+          // Weighted random selection
+          const totalWeight = validMoves.reduce((sum, m) => sum + m.weight, 0);
+          let random = Math.random() * totalWeight;
+          let next = validMoves[0];
+          for (const move of validMoves) {
+            random -= move.weight;
+            if (random <= 0) {
+              next = move;
+              break;
             }
           }
-        });
-        yesBtn.style.position = "absolute";
-        yesBtn.style.transition = "none";
-        yesBtn.style.fontSize = "16px";
-        yesBtn.style.fontWeight = "bold";
-        yesBtn.style.padding = "0";
-        yesBtn.style.display = "flex";
-        yesBtn.style.alignItems = "center";
-        yesBtn.style.justifyContent = "center";
-        yesBtn.style.zIndex = "10";
-        yesBtn.style.borderRadius = "8px";
-        yesBtn.style.background = "#00ff00";
-        yesBtn.style.color = "#000";
 
-        container.appendChild(yesBtn);
+          current = {x: next.x, y: next.y};
+          path.push(current);
+          visited.add(`${current.x},${current.y}`);
+        }
 
-        yesButtons.push({
-          element: yesBtn,
-          size: config.YES_SIZE,
-          x: screenWidth * pos.x - config.YES_SIZE / 2,
-          y: screenHeight * pos.y - config.YES_SIZE / 2,
-          velX: 0,
-          velY: 0,
-        });
+        // If we didn't reach target, return a simple direct path
+        if (current.x !== target.x || current.y !== target.y) {
+          const simplePath = [];
+          for (let x = 0; x <= 4; x++) simplePath.push({x, y: 0});
+          for (let y = 1; y <= 4; y++) simplePath.push({x: 4, y});
+          return simplePath;
+        }
+
+        return path;
       }
 
-      let elapsedTime = 0;
+      const solutionPath = generateRandomPath();
 
-      function checkCollisions() {
-        // Check collision for each YES button with all active NO buttons
-        yesButtons.forEach(yes => {
-          const yesCenterX = yes.x + yes.size / 2;
-          const yesCenterY = yes.y + yes.size / 2;
-
-          noButtons.forEach(no => {
-            if (!no.active) return;
-
-            const noCenterX = no.x;
-            const noCenterY = no.y;
-
-            const dx = yesCenterX - noCenterX;
-            const dy = yesCenterY - noCenterY;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            const minDistance = (no.size / 2 + yes.size / 2);
-
-            if (distance < minDistance) {
-              // Push YES button away violently
-              const angle = Math.atan2(dy, dx);
-              const overlap = minDistance - distance;
-
-              yes.velX += Math.cos(angle) * config.PUSH_FORCE;
-              yes.velY += Math.sin(angle) * config.PUSH_FORCE;
-
-              yes.x += Math.cos(angle) * overlap;
-              yes.y += Math.sin(angle) * overlap;
-            }
-          });
-        });
-      }
-
-      function updatePhysics() {
-        elapsedTime += 50;
-
-        // Activate and grow NO buttons
-        noButtons.forEach(no => {
-          if (!no.active && elapsedTime >= no.spawnTime) {
-            no.active = true;
-            no.size = config.INITIAL_NO_SIZE;
-            no.element.style.display = "flex";
-          }
-
-          if (no.active) {
-            no.size += config.GROWTH_RATE;
-            no.element.style.width = `${no.size}px`;
-            no.element.style.height = `${no.size}px`;
-            no.element.style.left = `${no.x - no.size / 2}px`;
-            no.element.style.top = `${no.y - no.size / 2}px`;
-          }
-        });
-
-        // Update each YES button
-        yesButtons.forEach(yes => {
-          // Apply velocity
-          yes.x += yes.velX;
-          yes.y += yes.velY;
-
-          // Less friction for more violent movement
-          yes.velX *= 0.92;
-          yes.velY *= 0.92;
-
-          // Bounce off walls with more energy retention
-          if (yes.x < 0) {
-            yes.x = 0;
-            yes.velX = Math.abs(yes.velX) * 0.7;
-          }
-          if (yes.x + yes.size > screenWidth) {
-            yes.x = screenWidth - yes.size;
-            yes.velX = -Math.abs(yes.velX) * 0.7;
-          }
-          if (yes.y < 80) {
-            yes.y = 80;
-            yes.velY = Math.abs(yes.velY) * 0.7;
-          }
-          if (yes.y + yes.size > screenHeight) {
-            yes.y = screenHeight - yes.size;
-            yes.velY = -Math.abs(yes.velY) * 0.7;
-          }
-
-          // Update position
-          yes.element.style.width = `${yes.size}px`;
-          yes.element.style.height = `${yes.size}px`;
-          yes.element.style.left = `${yes.x}px`;
-          yes.element.style.top = `${yes.y}px`;
-        });
-
-        checkCollisions();
-
-        // Check if NO buttons have covered too much screen (dies sooner)
-        const largestNo = Math.max(...noButtons.filter(n => n.active).map(n => n.size));
-        if (largestNo > Math.max(screenWidth, screenHeight) * config.DEATH_THRESHOLD) {
-          game.die();
+      // Initialize grid with ALL cells having pipes (decoys + solution)
+      const grid = [];
+      for (let y = 0; y < config.GRID_SIZE; y++) {
+        grid[y] = [];
+        for (let x = 0; x < config.GRID_SIZE; x++) {
+          // Randomly assign type and rotation for decoy pipes
+          grid[y][x] = {
+            type: Math.random() < 0.6 ? PIPE_STRAIGHT : PIPE_CORNER,
+            rotation: Math.floor(Math.random() * 4),
+            inPath: false,
+            correctRotation: 0,
+          };
         }
       }
 
-      const physicsInterval = setInterval(updatePhysics, 50);
-      registerInterval(physicsInterval);
+      // Dynamically set up the actual solution path based on generated path
+      for (let i = 0; i < solutionPath.length; i++) {
+        const pos = solutionPath[i];
+        const cell = grid[pos.y][pos.x];
+        cell.inPath = true;
+
+        // Determine what directions this pipe needs to connect
+        const prev = i > 0 ? solutionPath[i - 1] : null;
+        const next = i < solutionPath.length - 1 ? solutionPath[i + 1] : null;
+
+        // Calculate direction to previous cell (where we came from)
+        let dirFromPrev = -1;
+        if (prev) {
+          if (prev.x === pos.x - 1) dirFromPrev = 3; // came from left
+          else if (prev.x === pos.x + 1) dirFromPrev = 1; // came from right
+          else if (prev.y === pos.y - 1) dirFromPrev = 0; // came from top
+          else if (prev.y === pos.y + 1) dirFromPrev = 2; // came from bottom
+        }
+
+        // Calculate direction to next cell (where we're going)
+        let dirToNext = -1;
+        if (next) {
+          if (next.x === pos.x + 1) dirToNext = 1; // going right
+          else if (next.x === pos.x - 1) dirToNext = 3; // going left
+          else if (next.y === pos.y + 1) dirToNext = 2; // going bottom
+          else if (next.y === pos.y - 1) dirToNext = 0; // going top
+        }
+
+        // Determine pipe type and rotation
+        if (dirFromPrev === -1 || dirToNext === -1) {
+          // Start or end - use straight pipe in appropriate direction
+          const dir = dirFromPrev !== -1 ? dirFromPrev : dirToNext;
+          cell.type = PIPE_STRAIGHT;
+          cell.correctRotation = (dir === 0 || dir === 2) ? 0 : 1; // 0 for vertical, 1 for horizontal
+        } else if (Math.abs(dirFromPrev - dirToNext) === 2) {
+          // Opposite directions = straight pipe
+          cell.type = PIPE_STRAIGHT;
+          cell.correctRotation = (dirFromPrev === 0 || dirFromPrev === 2) ? 0 : 1;
+        } else {
+          // Direction change = corner pipe
+          cell.type = PIPE_CORNER;
+
+          // Determine which sides the corner opens to
+          const openings = [dirFromPrev, dirToNext].sort((a, b) => a - b);
+
+          // Map opening pairs to rotation:
+          // [0,1] = top-right = rotation 0
+          // [1,2] = right-bottom = rotation 1
+          // [2,3] = bottom-left = rotation 2
+          // [0,3] = top-left = rotation 3
+          if (openings[0] === 0 && openings[1] === 1) cell.correctRotation = 0;
+          else if (openings[0] === 1 && openings[1] === 2) cell.correctRotation = 1;
+          else if (openings[0] === 2 && openings[1] === 3) cell.correctRotation = 2;
+          else if (openings[0] === 0 && openings[1] === 3) cell.correctRotation = 3;
+        }
+      }
+
+      // Start all correct then scramble
+      for (let i = 0; i < solutionPath.length; i++) {
+        const pos = solutionPath[i];
+        grid[pos.y][pos.x].rotation = grid[pos.y][pos.x].correctRotation;
+      }
+
+      // Scramble 10-12 random solution pipes
+      const scrambleCount = Math.floor(Math.random() * 3) + 10; // 10-12 pipes
+      const scrambled = new Set();
+      while (scrambled.size < Math.min(scrambleCount, solutionPath.length)) {
+        scrambled.add(Math.floor(Math.random() * solutionPath.length));
+      }
+
+      for (const idx of scrambled) {
+        const pos = solutionPath[idx];
+        const cell = grid[pos.y][pos.x];
+
+        if (cell.type === PIPE_STRAIGHT) {
+          // For straight pipes, rotate to perpendicular
+          const correct = cell.correctRotation;
+          if (correct === 0 || correct === 2) {
+            cell.rotation = 1; // vertical -> horizontal
+          } else {
+            cell.rotation = 0; // horizontal -> vertical
+          }
+        } else {
+          // For corner pipes, rotate 1, 2, or 3 positions
+          const offset = Math.floor(Math.random() * 3) + 1; // 1, 2, or 3
+          cell.rotation = (cell.correctRotation + offset) % 4;
+        }
+      }
+
+      function drawPipe(x, y, type, rotation, highlight = false, isCorrect = false) {
+        const centerX = x * config.CELL_SIZE + config.CELL_SIZE / 2;
+        const centerY = y * config.CELL_SIZE + config.CELL_SIZE / 2;
+
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate((rotation * Math.PI) / 2);
+
+        // Color coding: make all pipes look similar, only show green when connected
+        let strokeColor = "#666"; // All pipes same medium gray
+        if (highlight) {
+          strokeColor = "#00aaff"; // Bright blue when puzzle is solved
+        } else if (isCorrect) {
+          strokeColor = "#66cc66"; // Green for correctly connected solution pipes
+        }
+
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = config.PIPE_WIDTH;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+
+        if (type === PIPE_STRAIGHT) {
+          ctx.beginPath();
+          ctx.moveTo(0, -config.CELL_SIZE / 2);
+          ctx.lineTo(0, config.CELL_SIZE / 2);
+          ctx.stroke();
+        } else if (type === PIPE_CORNER) {
+          ctx.beginPath();
+          ctx.moveTo(0, -config.CELL_SIZE / 2);
+          ctx.lineTo(0, 0);
+          ctx.lineTo(config.CELL_SIZE / 2, 0);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
+
+      function drawGrid(highlightPath = false) {
+        ctx.fillStyle = "#f5f5f5";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw grid lines
+        ctx.strokeStyle = "#ddd";
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= config.GRID_SIZE; i++) {
+          ctx.beginPath();
+          ctx.moveTo(i * config.CELL_SIZE, 0);
+          ctx.lineTo(i * config.CELL_SIZE, totalSize);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(0, i * config.CELL_SIZE);
+          ctx.lineTo(totalSize, i * config.CELL_SIZE);
+          ctx.stroke();
+        }
+
+        // Highlight path cells if needed
+        if (highlightPath) {
+          ctx.fillStyle = "rgba(0, 255, 0, 0.1)";
+          for (const pos of solutionPath) {
+            ctx.fillRect(pos.x * config.CELL_SIZE, pos.y * config.CELL_SIZE, config.CELL_SIZE, config.CELL_SIZE);
+          }
+        }
+
+        // Draw ALL pipes (both decoy and solution)
+        for (let y = 0; y < config.GRID_SIZE; y++) {
+          for (let x = 0; x < config.GRID_SIZE; x++) {
+            const cell = grid[y][x];
+
+            if (cell.inPath) {
+              // This is part of the solution path - check if it's correctly connected
+              let isCorrect = false;
+
+              // Find this cell's position in the solution path
+              const pathIndex = solutionPath.findIndex(p => p.x === x && p.y === y);
+
+              if (pathIndex !== -1) {
+                let connectedToPrev = true;
+                let connectedToNext = true;
+
+                // Check connection to previous pipe
+                if (pathIndex > 0) {
+                  const prev = solutionPath[pathIndex - 1];
+                  const prevCell = grid[prev.y][prev.x];
+
+                  let dirToPrev;
+                  if (prev.x === x + 1) dirToPrev = 1;
+                  else if (prev.x === x - 1) dirToPrev = 3;
+                  else if (prev.y === y + 1) dirToPrev = 2;
+                  else if (prev.y === y - 1) dirToPrev = 0;
+
+                  const oppDir = (dirToPrev + 2) % 4;
+                  const currentConn = getPipeConnections(cell.type, cell.rotation);
+                  const prevConn = getPipeConnections(prevCell.type, prevCell.rotation);
+
+                  connectedToPrev = currentConn.includes(dirToPrev) && prevConn.includes(oppDir);
+                }
+
+                // Check connection to next pipe
+                if (pathIndex < solutionPath.length - 1) {
+                  const next = solutionPath[pathIndex + 1];
+                  const nextCell = grid[next.y][next.x];
+
+                  let dirToNext;
+                  if (next.x === x + 1) dirToNext = 1;
+                  else if (next.x === x - 1) dirToNext = 3;
+                  else if (next.y === y + 1) dirToNext = 2;
+                  else if (next.y === y - 1) dirToNext = 0;
+
+                  const oppDir = (dirToNext + 2) % 4;
+                  const currentConn = getPipeConnections(cell.type, cell.rotation);
+                  const nextConn = getPipeConnections(nextCell.type, nextCell.rotation);
+
+                  connectedToNext = currentConn.includes(dirToNext) && nextConn.includes(oppDir);
+                }
+
+                isCorrect = connectedToPrev && connectedToNext;
+              }
+
+              drawPipe(x, y, cell.type, cell.rotation, highlightPath, !highlightPath && isCorrect);
+            } else {
+              // This is a decoy pipe
+              drawPipe(x, y, cell.type, cell.rotation, false, false);
+            }
+          }
+        }
+
+        // Draw start marker
+        const startX = solutionPath[0].x * config.CELL_SIZE + config.CELL_SIZE / 2;
+        const startY = solutionPath[0].y * config.CELL_SIZE + config.CELL_SIZE / 2;
+        ctx.fillStyle = "#00ff00";
+        ctx.beginPath();
+        ctx.arc(startX, startY, 15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Draw end marker
+        const endPos = solutionPath[solutionPath.length - 1];
+        const endX = endPos.x * config.CELL_SIZE + config.CELL_SIZE / 2;
+        const endY = endPos.y * config.CELL_SIZE + config.CELL_SIZE / 2;
+        ctx.fillStyle = "#ff0000";
+        ctx.beginPath();
+        ctx.arc(endX, endY, 15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+
+      // Helper to get which sides a pipe connects to
+      function getPipeConnections(type, rotation) {
+        // Returns array of directions: 0=top, 1=right, 2=bottom, 3=left
+        if (type === PIPE_STRAIGHT) {
+          if (rotation === 0 || rotation === 2) {
+            return [0, 2]; // vertical: top and bottom
+          } else {
+            return [1, 3]; // horizontal: right and left
+          }
+        } else {
+          // Corner pipe rotations: 0=top-right, 1=right-bottom, 2=bottom-left, 3=left-top
+          const corners = [
+            [0, 1], // rotation 0: top and right
+            [1, 2], // rotation 1: right and bottom
+            [2, 3], // rotation 2: bottom and left
+            [3, 0], // rotation 3: left and top
+          ];
+          return corners[rotation];
+        }
+      }
+
+      function checkSolution() {
+        // Trace through the solution path to verify connectivity
+        for (let i = 0; i < solutionPath.length - 1; i++) {
+          const current = solutionPath[i];
+          const next = solutionPath[i + 1];
+          const currentCell = grid[current.y][current.x];
+          const nextCell = grid[next.y][next.x];
+
+          // Determine the direction from current to next
+          let directionToNext;
+          if (next.x === current.x + 1) directionToNext = 1; // right
+          else if (next.x === current.x - 1) directionToNext = 3; // left
+          else if (next.y === current.y + 1) directionToNext = 2; // bottom
+          else if (next.y === current.y - 1) directionToNext = 0; // top
+
+          // Opposite directions
+          const oppositeDir = (directionToNext + 2) % 4;
+
+          // Check if current pipe connects in the direction of next
+          const currentConnections = getPipeConnections(currentCell.type, currentCell.rotation);
+          if (!currentConnections.includes(directionToNext)) {
+            return false;
+          }
+
+          // Check if next pipe connects back to current
+          const nextConnections = getPipeConnections(nextCell.type, nextCell.rotation);
+          if (!nextConnections.includes(oppositeDir)) {
+            return false;
+          }
+        }
+        return true;
+      }
+
+      let solved = false;
+
+      canvas.addEventListener("click", (e) => {
+        if (solved) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+
+        const gridX = Math.floor((clickX / rect.width) * config.GRID_SIZE);
+        const gridY = Math.floor((clickY / rect.height) * config.GRID_SIZE);
+
+        if (gridX >= 0 && gridX < config.GRID_SIZE && gridY >= 0 && gridY < config.GRID_SIZE) {
+          const cell = grid[gridY][gridX];
+          // Allow rotating ANY pipe (decoy or solution)
+          cell.rotation = (cell.rotation + 1) % 4;
+          drawGrid();
+
+          // Only check solution if all solution pipes are correct
+          if (checkSolution()) {
+            solved = true;
+            game.getQuestionElement().textContent = "Connected! Water is flowing!";
+
+            // Animate water flow
+            drawGrid(true);
+
+            setTimeout(() => {
+              game.nextLevel();
+            }, 1500);
+          }
+        }
+      });
+
+      drawGrid();
     },
   },
 
@@ -526,14 +727,46 @@ const levels = [
 
       const startTime = Date.now();
       let timerVisible = true;
+      let clicked = false;
 
       const yesBtn = createButton("YES", () => {
-        const elapsedSeconds = (Date.now() - startTime) / 1000;
+        if (clicked) return;
+        clicked = true;
 
-        if (elapsedSeconds >= targetStart && elapsedSeconds <= targetEnd) {
-          game.nextLevel();
+        const elapsedSeconds = (Date.now() - startTime) / 1000;
+        const timerEl = getElement("precise-timer");
+
+        // Stop the timer interval
+        clearAllIntervals();
+
+        // Show the actual click time
+        if (timerEl) {
+          timerEl.textContent = elapsedSeconds.toFixed(2);
+
+          if (elapsedSeconds >= targetStart && elapsedSeconds <= targetEnd) {
+            // Success - show in green
+            timerEl.style.color = "#00ff00";
+            yesBtn.disabled = true;
+
+            setTimeout(() => {
+              game.nextLevel();
+            }, 1000);
+          } else {
+            // Failure - show in red
+            timerEl.style.color = "#ff0000";
+            yesBtn.disabled = true;
+
+            setTimeout(() => {
+              game.die();
+            }, 1500);
+          }
         } else {
-          game.die();
+          // Fallback if timer element not found
+          if (elapsedSeconds >= targetStart && elapsedSeconds <= targetEnd) {
+            game.nextLevel();
+          } else {
+            game.die();
+          }
         }
       });
 
@@ -557,105 +790,6 @@ const levels = [
       }, 100);
 
       registerInterval(timerInterval);
-    },
-  },
-
-  {
-    render: async () => {
-      const config = LEVEL_CONFIG.DOG_BREED;
-
-      game.getQuestionElement().innerHTML = "Loading dog image...";
-
-      const container = game.getButtonsElement();
-      container.style.textAlign = "center";
-
-      try {
-        // Fetch a random dog image
-        const response = await fetch(config.API_URL);
-        const data = await response.json();
-
-        if (!data.message) {
-          throw new Error("Failed to load dog image");
-        }
-
-        const imageUrl = data.message;
-        // Extract breed from URL format: https://images.dog.ceo/breeds/hound-afghan/n02088094_1003.jpg
-        // Format is: /breeds/BREED-SUBBREED/ or /breeds/BREED/
-        const urlParts = imageUrl.split('/');
-        const breedIndex = urlParts.indexOf('breeds') + 1;
-        const breedPart = urlParts[breedIndex];
-        const breedParts = breedPart.split('-');
-
-        let correctBreed;
-        if (breedParts.length > 1) {
-          // Sub-breed format: "hound-afghan" -> "Afghan Hound"
-          correctBreed = breedParts[1].charAt(0).toUpperCase() + breedParts[1].slice(1) + " " +
-                         breedParts[0].charAt(0).toUpperCase() + breedParts[0].slice(1);
-        } else {
-          // Simple breed: "labrador" -> "Labrador"
-          correctBreed = breedPart.charAt(0).toUpperCase() + breedPart.slice(1);
-        }
-
-        // Fetch all breeds to create wrong answers
-        const breedsResponse = await fetch(config.ALL_BREEDS_URL);
-        const breedsData = await breedsResponse.json();
-        const allBreeds = [];
-
-        for (const [breed, subBreeds] of Object.entries(breedsData.message)) {
-          if (subBreeds.length > 0) {
-            for (const subBreed of subBreeds) {
-              allBreeds.push(subBreed.charAt(0).toUpperCase() + subBreed.slice(1) + " " +
-                           breed.charAt(0).toUpperCase() + breed.slice(1));
-            }
-          } else {
-            allBreeds.push(breed.charAt(0).toUpperCase() + breed.slice(1));
-          }
-        }
-
-        // Filter out the correct breed and shuffle
-        const wrongBreeds = allBreeds.filter(b => b !== correctBreed);
-        const shuffledWrong = shuffleArray(wrongBreeds);
-
-        // Create answer options
-        const options = [correctBreed];
-        for (let i = 0; i < config.ANSWER_COUNT - 1 && i < shuffledWrong.length; i++) {
-          options.push(shuffledWrong[i]);
-        }
-        const shuffledOptions = shuffleArray(options);
-
-        // Display the dog image
-        game.getQuestionElement().innerHTML = "What breed is this dog?";
-
-        const img = document.createElement("img");
-        img.src = imageUrl;
-        img.style.maxWidth = "500px";
-        img.style.maxHeight = "400px";
-        img.style.borderRadius = "8px";
-        img.style.marginBottom = "20px";
-        img.style.border = "3px solid #000";
-        container.appendChild(img);
-
-        // Create answer buttons
-        const buttonsContainer = document.createElement("div");
-        buttonsContainer.style.display = "grid";
-        buttonsContainer.style.gridTemplateColumns = "repeat(2, 1fr)";
-        buttonsContainer.style.gap = "15px";
-        buttonsContainer.style.maxWidth = "500px";
-        buttonsContainer.style.margin = "0 auto";
-
-        shuffledOptions.forEach(breed => {
-          const btn = createButton(breed, breed === correctBreed ? game.nextLevel : game.die);
-          buttonsContainer.appendChild(btn);
-        });
-
-        container.appendChild(buttonsContainer);
-
-      } catch (error) {
-        console.error("Error loading dog API:", error);
-        game.getQuestionElement().textContent = "Failed to load dog image. Click YES to continue.";
-        const fallbackBtn = createButton("YES", game.nextLevel);
-        container.appendChild(fallbackBtn);
-      }
     },
   },
 
