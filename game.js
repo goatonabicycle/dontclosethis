@@ -89,6 +89,11 @@ const LEVEL_CONFIG = {
     WINDOW_SIZE: 1,
     TIMER_HIDE_BEFORE: 5,
   },
+  DOG_BREED: {
+    ANSWER_COUNT: 6,
+    API_URL: "https://dog.ceo/api/breeds/image/random",
+    ALL_BREEDS_URL: "https://dog.ceo/api/breeds/list/all",
+  },
 };
 
 const gameState = {
@@ -552,6 +557,105 @@ const levels = [
       }, 100);
 
       registerInterval(timerInterval);
+    },
+  },
+
+  {
+    render: async () => {
+      const config = LEVEL_CONFIG.DOG_BREED;
+
+      game.getQuestionElement().innerHTML = "Loading dog image...";
+
+      const container = game.getButtonsElement();
+      container.style.textAlign = "center";
+
+      try {
+        // Fetch a random dog image
+        const response = await fetch(config.API_URL);
+        const data = await response.json();
+
+        if (!data.message) {
+          throw new Error("Failed to load dog image");
+        }
+
+        const imageUrl = data.message;
+        // Extract breed from URL format: https://images.dog.ceo/breeds/hound-afghan/n02088094_1003.jpg
+        // Format is: /breeds/BREED-SUBBREED/ or /breeds/BREED/
+        const urlParts = imageUrl.split('/');
+        const breedIndex = urlParts.indexOf('breeds') + 1;
+        const breedPart = urlParts[breedIndex];
+        const breedParts = breedPart.split('-');
+
+        let correctBreed;
+        if (breedParts.length > 1) {
+          // Sub-breed format: "hound-afghan" -> "Afghan Hound"
+          correctBreed = breedParts[1].charAt(0).toUpperCase() + breedParts[1].slice(1) + " " +
+                         breedParts[0].charAt(0).toUpperCase() + breedParts[0].slice(1);
+        } else {
+          // Simple breed: "labrador" -> "Labrador"
+          correctBreed = breedPart.charAt(0).toUpperCase() + breedPart.slice(1);
+        }
+
+        // Fetch all breeds to create wrong answers
+        const breedsResponse = await fetch(config.ALL_BREEDS_URL);
+        const breedsData = await breedsResponse.json();
+        const allBreeds = [];
+
+        for (const [breed, subBreeds] of Object.entries(breedsData.message)) {
+          if (subBreeds.length > 0) {
+            for (const subBreed of subBreeds) {
+              allBreeds.push(subBreed.charAt(0).toUpperCase() + subBreed.slice(1) + " " +
+                           breed.charAt(0).toUpperCase() + breed.slice(1));
+            }
+          } else {
+            allBreeds.push(breed.charAt(0).toUpperCase() + breed.slice(1));
+          }
+        }
+
+        // Filter out the correct breed and shuffle
+        const wrongBreeds = allBreeds.filter(b => b !== correctBreed);
+        const shuffledWrong = shuffleArray(wrongBreeds);
+
+        // Create answer options
+        const options = [correctBreed];
+        for (let i = 0; i < config.ANSWER_COUNT - 1 && i < shuffledWrong.length; i++) {
+          options.push(shuffledWrong[i]);
+        }
+        const shuffledOptions = shuffleArray(options);
+
+        // Display the dog image
+        game.getQuestionElement().innerHTML = "What breed is this dog?";
+
+        const img = document.createElement("img");
+        img.src = imageUrl;
+        img.style.maxWidth = "500px";
+        img.style.maxHeight = "400px";
+        img.style.borderRadius = "8px";
+        img.style.marginBottom = "20px";
+        img.style.border = "3px solid #000";
+        container.appendChild(img);
+
+        // Create answer buttons
+        const buttonsContainer = document.createElement("div");
+        buttonsContainer.style.display = "grid";
+        buttonsContainer.style.gridTemplateColumns = "repeat(2, 1fr)";
+        buttonsContainer.style.gap = "15px";
+        buttonsContainer.style.maxWidth = "500px";
+        buttonsContainer.style.margin = "0 auto";
+
+        shuffledOptions.forEach(breed => {
+          const btn = createButton(breed, breed === correctBreed ? game.nextLevel : game.die);
+          buttonsContainer.appendChild(btn);
+        });
+
+        container.appendChild(buttonsContainer);
+
+      } catch (error) {
+        console.error("Error loading dog API:", error);
+        game.getQuestionElement().textContent = "Failed to load dog image. Click YES to continue.";
+        const fallbackBtn = createButton("YES", game.nextLevel);
+        container.appendChild(fallbackBtn);
+      }
     },
   },
 
