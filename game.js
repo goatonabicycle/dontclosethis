@@ -9,8 +9,8 @@ const GAME_CONFIG = {
 
 const LEVEL_CONFIG = {
   MANY_BUTTONS: {
-    MIN_BUTTONS: 15,
-    MAX_BUTTONS: 25,
+    MIN_BUTTONS: 25,
+    MAX_BUTTONS: 40,
     TIMER_DURATION: 3,
     BUTTON_COLORS: [
       "#ff4444",
@@ -73,9 +73,9 @@ const LEVEL_CONFIG = {
     CANVAS_HEIGHT: 400,
   },
   PIPE_ROTATION: {
-    GRID_SIZE: 5,
-    CELL_SIZE: 80,
-    PIPE_WIDTH: 20,
+    GRID_SIZE: 10,
+    CELL_SIZE: 50,
+    PIPE_WIDTH: 14,
   },
   PRECISE_TIMING: {
     MIN_TARGET_START: 8,
@@ -302,67 +302,122 @@ const levels = [
 
       // Generate a random winding path from start to end
       function generateRandomPath() {
-        const path = [{ x: 0, y: 0 }];
-        const visited = new Set(["0,0"]);
-        let current = { x: 0, y: 0 };
-        const target = { x: 4, y: 4 };
+        const maxSize = config.GRID_SIZE - 1;
+        const maxAttempts = 50;
 
-        while (current.x !== target.x || current.y !== target.y) {
-          const possibleMoves = [];
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          const path = [{ x: 0, y: 0 }];
+          const visited = new Set(["0,0"]);
+          let current = { x: 0, y: 0 };
+          const target = { x: maxSize, y: maxSize };
 
-          // Prefer moving towards target but allow some randomness
-          if (current.x < target.x)
-            possibleMoves.push({ x: current.x + 1, y: current.y, weight: 3 });
-          if (current.x > target.x)
-            possibleMoves.push({ x: current.x - 1, y: current.y, weight: 3 });
-          if (current.y < target.y)
-            possibleMoves.push({ x: current.x, y: current.y + 1, weight: 3 });
-          if (current.y > target.y)
-            possibleMoves.push({ x: current.x, y: current.y - 1, weight: 3 });
+          // Minimum path length should be at least 1.5x the Manhattan distance
+          const minPathLength = Math.floor(maxSize * 2 * 1.5);
 
-          // Add other valid moves with lower weight
-          if (current.x > 0)
-            possibleMoves.push({ x: current.x - 1, y: current.y, weight: 1 });
-          if (current.x < 4)
-            possibleMoves.push({ x: current.x + 1, y: current.y, weight: 1 });
-          if (current.y > 0)
-            possibleMoves.push({ x: current.x, y: current.y - 1, weight: 1 });
-          if (current.y < 4)
-            possibleMoves.push({ x: current.x, y: current.y + 1, weight: 1 });
+          while (current.x !== target.x || current.y !== target.y) {
+            const possibleMoves = [];
 
-          // Filter out visited cells
-          const validMoves = possibleMoves.filter(
-            (m) => !visited.has(`${m.x},${m.y}`),
-          );
+            // Balanced weighting between progress and exploration
+            // Allow more wandering if we're far from minimum path length
+            const progressWeight = path.length < minPathLength ? 2 : 4;
+            const exploreWeight = path.length < minPathLength ? 3 : 1;
 
-          if (validMoves.length === 0) break; // Dead end, restart
+            // Moves toward target
+            if (current.x < target.x)
+              possibleMoves.push({
+                x: current.x + 1,
+                y: current.y,
+                weight: progressWeight,
+              });
+            if (current.x > target.x)
+              possibleMoves.push({
+                x: current.x - 1,
+                y: current.y,
+                weight: progressWeight,
+              });
+            if (current.y < target.y)
+              possibleMoves.push({
+                x: current.x,
+                y: current.y + 1,
+                weight: progressWeight,
+              });
+            if (current.y > target.y)
+              possibleMoves.push({
+                x: current.x,
+                y: current.y - 1,
+                weight: progressWeight,
+              });
 
-          // Weighted random selection
-          const totalWeight = validMoves.reduce((sum, m) => sum + m.weight, 0);
-          let random = Math.random() * totalWeight;
-          let next = validMoves[0];
-          for (const move of validMoves) {
-            random -= move.weight;
-            if (random <= 0) {
-              next = move;
-              break;
+            // Moves away from target or perpendicular (for wandering)
+            if (current.x > 0)
+              possibleMoves.push({
+                x: current.x - 1,
+                y: current.y,
+                weight: exploreWeight,
+              });
+            if (current.x < maxSize)
+              possibleMoves.push({
+                x: current.x + 1,
+                y: current.y,
+                weight: exploreWeight,
+              });
+            if (current.y > 0)
+              possibleMoves.push({
+                x: current.x,
+                y: current.y - 1,
+                weight: exploreWeight,
+              });
+            if (current.y < maxSize)
+              possibleMoves.push({
+                x: current.x,
+                y: current.y + 1,
+                weight: exploreWeight,
+              });
+
+            // Filter out visited cells
+            const validMoves = possibleMoves.filter(
+              (m) => !visited.has(`${m.x},${m.y}`),
+            );
+
+            if (validMoves.length === 0) break; // Dead end, try again
+
+            // Weighted random selection
+            const totalWeight = validMoves.reduce(
+              (sum, m) => sum + m.weight,
+              0,
+            );
+            let random = Math.random() * totalWeight;
+            let next = validMoves[0];
+            for (const move of validMoves) {
+              random -= move.weight;
+              if (random <= 0) {
+                next = move;
+                break;
+              }
             }
+
+            current = { x: next.x, y: next.y };
+            path.push(current);
+            visited.add(`${current.x},${current.y}`);
           }
 
-          current = { x: next.x, y: next.y };
-          path.push(current);
-          visited.add(`${current.x},${current.y}`);
+          // If we reached target with a good path length, use it
+          if (
+            current.x === target.x &&
+            current.y === target.y &&
+            path.length >= minPathLength
+          ) {
+            return path;
+          }
         }
 
-        // If we didn't reach target, return a simple direct path
-        if (current.x !== target.x || current.y !== target.y) {
-          const simplePath = [];
-          for (let x = 0; x <= 4; x++) simplePath.push({ x, y: 0 });
-          for (let y = 1; y <= 4; y++) simplePath.push({ x: 4, y });
-          return simplePath;
-        }
-
-        return path;
+        // Fallback: create a winding L-shaped path that traverses the map
+        const fallbackPath = [];
+        // Go right along the top
+        for (let x = 0; x <= maxSize; x++) fallbackPath.push({ x, y: 0 });
+        // Go down the right side
+        for (let y = 1; y <= maxSize; y++) fallbackPath.push({ x: maxSize, y });
+        return fallbackPath;
       }
 
       const solutionPath = generateRandomPath();
@@ -790,7 +845,239 @@ const levels = [
     },
   },
 
-  // Level 3: Precise Timing
+  // Level 3: Many Buttons Timer
+  {
+    render: () => {
+      const config = LEVEL_CONFIG.MANY_BUTTONS;
+      const questionEl = game.getQuestionElement();
+      questionEl.innerHTML = `Do you want to continue?<br><span id='timer' style='font-size: 2rem; color: red;'>${config.TIMER_DURATION}</span>`;
+
+      const container = game.getButtonsElement();
+
+      const buttonCount =
+        Math.floor(
+          Math.random() * (config.MAX_BUTTONS - config.MIN_BUTTONS + 1),
+        ) + config.MIN_BUTTONS;
+
+      const buttonColor =
+        config.BUTTON_COLORS[
+          Math.floor(Math.random() * config.BUTTON_COLORS.length)
+        ];
+
+      const buttons = [];
+      for (let i = 0; i < buttonCount; i++) {
+        const isCorrect = i === 0;
+        // Randomize button width between 90px and 130px (narrower range)
+        const randomWidth = Math.floor(Math.random() * 40) + 90;
+        buttons.push({
+          text: isCorrect ? "YES" : "NO",
+          onClick: isCorrect ? game.nextLevel : game.die,
+          width: randomWidth,
+        });
+      }
+
+      const shuffledButtons = shuffleArray(buttons);
+
+      shuffledButtons.forEach((btnData) => {
+        const btn = createButton(btnData.text, btnData.onClick, {
+          background: buttonColor,
+          minWidth: `${btnData.width}px`,
+          maxWidth: `${btnData.width}px`,
+          width: `${btnData.width}px`,
+        });
+        container.appendChild(btn);
+      });
+
+      let timeLeftMs = config.TIMER_DURATION * 1000;
+      const startTime = Date.now();
+
+      const timerInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        timeLeftMs = config.TIMER_DURATION * 1000 - elapsed;
+
+        const timerEl = getElement("timer");
+        if (timerEl) {
+          if (timeLeftMs <= 0) {
+            clearInterval(timerInterval);
+            game.die();
+          } else {
+            timerEl.textContent = (timeLeftMs / 1000).toFixed(2);
+          }
+        } else {
+          clearInterval(timerInterval);
+        }
+      }, 50);
+
+      registerInterval(timerInterval);
+    },
+  },
+
+  // Level 4: Position vs Label
+  {
+    render: () => {
+      const config = LEVEL_CONFIG.NUMBERED_BUTTONS;
+      const targetPosition =
+        Math.floor(
+          Math.random() * (config.MAX_POSITION - config.MIN_POSITION + 1),
+        ) + config.MIN_POSITION;
+
+      const positionWords = [
+        "FIRST",
+        "SECOND",
+        "THIRD",
+        "FOURTH",
+        "FIFTH",
+        "SIXTH",
+        "SEVENTH",
+        "EIGHTH",
+        "NINTH",
+        "TENTH",
+      ];
+      game.getQuestionElement().textContent = `Click the ${positionWords[targetPosition - 1]} button`;
+
+      const container = game.getButtonsElement();
+
+      const buttonNumbers = [];
+      for (let i = 1; i <= config.BUTTON_COUNT; i++) {
+        buttonNumbers.push(i);
+      }
+      const shuffledNumbers = shuffleArray(buttonNumbers);
+
+      shuffledNumbers.forEach((num, position) => {
+        const isCorrect = position + 1 === targetPosition;
+        const btn = createButton(
+          `Button ${num}`,
+          isCorrect ? game.nextLevel : game.die,
+        );
+        container.appendChild(btn);
+      });
+    },
+  },
+
+  // Level 5: Traffic Light
+  {
+    render: () => {
+      const config = LEVEL_CONFIG.TRAFFIC_LIGHT;
+
+      const colorCount =
+        Math.floor(
+          Math.random() * (config.MAX_COLORS - config.MIN_COLORS + 1),
+        ) + config.MIN_COLORS;
+
+      const shuffledColorPool = shuffleArray([...config.COLOR_POOL]);
+      const selectedColors = shuffledColorPool.slice(0, colorCount);
+
+      const safeColorIndex = Math.floor(Math.random() * selectedColors.length);
+      const safeColor = selectedColors[safeColorIndex];
+
+      const reorderedColors = [
+        safeColor,
+        ...selectedColors.filter((c) => c !== safeColor),
+      ];
+
+      const cycleSpeed =
+        Math.floor(
+          Math.random() * (config.MAX_CYCLE_SPEED - config.MIN_CYCLE_SPEED + 1),
+        ) + config.MIN_CYCLE_SPEED;
+
+      game.getQuestionElement().textContent = `Wait for ${safeColor.name}, then click the button!`;
+
+      const container = game.getButtonsElement();
+
+      let currentColorIndex = 0;
+      let canClick = false;
+
+      const trafficBtn = createButton("CLICK ME", () => {
+        if (!canClick) return;
+        if (currentColorIndex === 0) {
+          clearAllIntervals();
+          game.nextLevel();
+        } else {
+          game.die();
+        }
+      });
+
+      const updateButtonColor = () => {
+        const currentColor = reorderedColors[currentColorIndex];
+        trafficBtn.style.background = currentColor.hex;
+      };
+
+      updateButtonColor();
+
+      const colorInterval = setInterval(() => {
+        currentColorIndex = (currentColorIndex + 1) % reorderedColors.length;
+        updateButtonColor();
+        if (currentColorIndex === 1 && !canClick) {
+          canClick = true;
+        }
+      }, cycleSpeed);
+
+      registerInterval(colorInterval);
+
+      container.appendChild(trafficBtn);
+    },
+  },
+
+  // Level 6: Hard Math
+  {
+    render: () => {
+      const config = LEVEL_CONFIG.MATH_QUIZ;
+      const num1 =
+        Math.floor(
+          Math.random() * (config.MAX_NUMBER - config.MIN_NUMBER + 1),
+        ) + config.MIN_NUMBER;
+      const num2 =
+        Math.floor(
+          Math.random() * (config.MAX_NUMBER - config.MIN_NUMBER + 1),
+        ) + config.MIN_NUMBER;
+
+      const isAddition = Math.random() < 0.5;
+      const correctAnswer = isAddition ? num1 + num2 : num1 - num2;
+      const operator = isAddition ? "+" : "-";
+
+      game.getQuestionElement().textContent = `What is ${num1} ${operator} ${num2}?`;
+
+      const container = game.getButtonsElement();
+
+      const answers = [correctAnswer];
+      while (answers.length < config.ANSWER_COUNT) {
+        const wrong =
+          correctAnswer +
+          Math.floor(Math.random() * config.VARIATION * 2) -
+          config.VARIATION;
+        if (!answers.includes(wrong)) {
+          answers.push(wrong);
+        }
+      }
+
+      const shuffledAnswers = shuffleArray(answers);
+
+      shuffledAnswers.forEach((ans) => {
+        const btn = createButton(
+          ans.toString(),
+          ans === correctAnswer ? game.nextLevel : game.die,
+        );
+        container.appendChild(btn);
+      });
+    },
+  },
+
+  // Level 7: Reverse Psychology
+  {
+    render: () => {
+      game.getQuestionElement().textContent =
+        "Don't click YES. I'm serious. Click NO.";
+
+      const yesBtn = createButton("YES", game.nextLevel);
+      const noBtn = createButton("NO", game.die);
+
+      const container = game.getButtonsElement();
+      container.appendChild(yesBtn);
+      container.appendChild(noBtn);
+    },
+  },
+
+  // Level 8: Precise Timing
   {
     render: () => {
       const config = LEVEL_CONFIG.PRECISE_TIMING;
@@ -870,232 +1157,6 @@ const levels = [
       }, 100);
 
       registerInterval(timerInterval);
-    },
-  },
-
-  // Level 4: Many Buttons Timer
-  {
-    render: () => {
-      const config = LEVEL_CONFIG.MANY_BUTTONS;
-      const questionEl = game.getQuestionElement();
-      questionEl.innerHTML = `Do you want to continue?<br><span id='timer' style='font-size: 2rem; color: red;'>${config.TIMER_DURATION}</span>`;
-
-      const container = game.getButtonsElement();
-
-      const buttonCount =
-        Math.floor(
-          Math.random() * (config.MAX_BUTTONS - config.MIN_BUTTONS + 1),
-        ) + config.MIN_BUTTONS;
-
-      const buttonColor =
-        config.BUTTON_COLORS[
-          Math.floor(Math.random() * config.BUTTON_COLORS.length)
-        ];
-
-      const buttons = [];
-      for (let i = 0; i < buttonCount; i++) {
-        const isCorrect = i === 0;
-        buttons.push({
-          text: isCorrect ? "YES" : "NO",
-          onClick: isCorrect ? game.nextLevel : game.die,
-        });
-      }
-
-      const shuffledButtons = shuffleArray(buttons);
-
-      shuffledButtons.forEach((btnData) => {
-        const btn = createButton(btnData.text, btnData.onClick, {
-          background: buttonColor,
-        });
-        container.appendChild(btn);
-      });
-
-      let timeLeftMs = config.TIMER_DURATION * 1000;
-      const startTime = Date.now();
-
-      const timerInterval = setInterval(() => {
-        const elapsed = Date.now() - startTime;
-        timeLeftMs = config.TIMER_DURATION * 1000 - elapsed;
-
-        const timerEl = getElement("timer");
-        if (timerEl) {
-          if (timeLeftMs <= 0) {
-            clearInterval(timerInterval);
-            game.die();
-          } else {
-            timerEl.textContent = (timeLeftMs / 1000).toFixed(2);
-          }
-        } else {
-          clearInterval(timerInterval);
-        }
-      }, 50);
-
-      registerInterval(timerInterval);
-    },
-  },
-
-  // Level 5: Position vs Label
-  {
-    render: () => {
-      const config = LEVEL_CONFIG.NUMBERED_BUTTONS;
-      const targetPosition =
-        Math.floor(
-          Math.random() * (config.MAX_POSITION - config.MIN_POSITION + 1),
-        ) + config.MIN_POSITION;
-
-      const positionWords = [
-        "FIRST",
-        "SECOND",
-        "THIRD",
-        "FOURTH",
-        "FIFTH",
-        "SIXTH",
-        "SEVENTH",
-        "EIGHTH",
-        "NINTH",
-        "TENTH",
-      ];
-      game.getQuestionElement().textContent = `Click the ${positionWords[targetPosition - 1]} button`;
-
-      const container = game.getButtonsElement();
-
-      const buttonNumbers = [];
-      for (let i = 1; i <= config.BUTTON_COUNT; i++) {
-        buttonNumbers.push(i);
-      }
-      const shuffledNumbers = shuffleArray(buttonNumbers);
-
-      shuffledNumbers.forEach((num, position) => {
-        const isCorrect = position + 1 === targetPosition;
-        const btn = createButton(
-          `Button ${num}`,
-          isCorrect ? game.nextLevel : game.die,
-        );
-        container.appendChild(btn);
-      });
-    },
-  },
-
-  // Level 6: Traffic Light
-  {
-    render: () => {
-      const config = LEVEL_CONFIG.TRAFFIC_LIGHT;
-
-      const colorCount =
-        Math.floor(
-          Math.random() * (config.MAX_COLORS - config.MIN_COLORS + 1),
-        ) + config.MIN_COLORS;
-
-      const shuffledColorPool = shuffleArray([...config.COLOR_POOL]);
-      const selectedColors = shuffledColorPool.slice(0, colorCount);
-
-      const safeColorIndex = Math.floor(Math.random() * selectedColors.length);
-      const safeColor = selectedColors[safeColorIndex];
-
-      const reorderedColors = [
-        safeColor,
-        ...selectedColors.filter((c) => c !== safeColor),
-      ];
-
-      const cycleSpeed =
-        Math.floor(
-          Math.random() * (config.MAX_CYCLE_SPEED - config.MIN_CYCLE_SPEED + 1),
-        ) + config.MIN_CYCLE_SPEED;
-
-      game.getQuestionElement().textContent = `Wait for ${safeColor.name}, then click the button!`;
-
-      const container = game.getButtonsElement();
-
-      let currentColorIndex = 0;
-      let canClick = false;
-
-      const trafficBtn = createButton("CLICK ME", () => {
-        if (!canClick) return;
-        if (currentColorIndex === 0) {
-          clearAllIntervals();
-          game.nextLevel();
-        } else {
-          game.die();
-        }
-      });
-
-      const updateButtonColor = () => {
-        const currentColor = reorderedColors[currentColorIndex];
-        trafficBtn.style.background = currentColor.hex;
-      };
-
-      updateButtonColor();
-
-      const colorInterval = setInterval(() => {
-        currentColorIndex = (currentColorIndex + 1) % reorderedColors.length;
-        updateButtonColor();
-        if (currentColorIndex === 1 && !canClick) {
-          canClick = true;
-        }
-      }, cycleSpeed);
-
-      registerInterval(colorInterval);
-
-      container.appendChild(trafficBtn);
-    },
-  },
-
-  // Level 7: Hard Math
-  {
-    render: () => {
-      const config = LEVEL_CONFIG.MATH_QUIZ;
-      const num1 =
-        Math.floor(
-          Math.random() * (config.MAX_NUMBER - config.MIN_NUMBER + 1),
-        ) + config.MIN_NUMBER;
-      const num2 =
-        Math.floor(
-          Math.random() * (config.MAX_NUMBER - config.MIN_NUMBER + 1),
-        ) + config.MIN_NUMBER;
-
-      const isAddition = Math.random() < 0.5;
-      const correctAnswer = isAddition ? num1 + num2 : num1 - num2;
-      const operator = isAddition ? "+" : "-";
-
-      game.getQuestionElement().textContent = `What is ${num1} ${operator} ${num2}?`;
-
-      const container = game.getButtonsElement();
-
-      const answers = [correctAnswer];
-      while (answers.length < config.ANSWER_COUNT) {
-        const wrong =
-          correctAnswer +
-          Math.floor(Math.random() * config.VARIATION * 2) -
-          config.VARIATION;
-        if (!answers.includes(wrong)) {
-          answers.push(wrong);
-        }
-      }
-
-      const shuffledAnswers = shuffleArray(answers);
-
-      shuffledAnswers.forEach((ans) => {
-        const btn = createButton(
-          ans.toString(),
-          ans === correctAnswer ? game.nextLevel : game.die,
-        );
-        container.appendChild(btn);
-      });
-    },
-  },
-
-  // Level 8: Reverse Psychology
-  {
-    render: () => {
-      game.getQuestionElement().textContent =
-        "Don't click YES. I'm serious. Click NO.";
-
-      const yesBtn = createButton("YES", game.nextLevel);
-      const noBtn = createButton("NO", game.die);
-
-      const container = game.getButtonsElement();
-      container.appendChild(yesBtn);
-      container.appendChild(noBtn);
     },
   },
 
@@ -1942,14 +2003,14 @@ const levels = [
 ];
 
 // Level Order Summary:
-// 1. Pipe Rotation Puzzle
+// 1. Pipe Rotation Puzzle (10x10 grid)
 // 2. Simple YES/NO
-// 3. Precise Timing
-// 4. Many Buttons Timer
-// 5. Position vs Label
-// 6. Traffic Light
-// 7. Hard Math
-// 8. Reverse Psychology
+// 3. Many Buttons Timer
+// 4. Position vs Label
+// 5. Traffic Light
+// 6. Hard Math
+// 7. Reverse Psychology
+// 8. Precise Timing
 // 9. Alphabetical Sequence
 // 10. 3 Cup Monte
 // 11. Pattern Memory
