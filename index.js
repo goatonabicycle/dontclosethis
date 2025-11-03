@@ -201,11 +201,16 @@ function checkGameMessages() {
   if (hasWon === "true") {
     const victoryMsg = document.getElementById("victory-message");
     const victoryTimeSpan = document.getElementById("victory-time");
+    const victoryLevelsSpan = document.getElementById("victory-levels");
     const victoryTime = storage.get("victoryTime");
+    const totalLevels = storage.get("totalLevels") || "13";
     console.log("Victory message element:", victoryMsg);
 
     if (victoryMsg && victoryTimeSpan) {
       victoryTimeSpan.textContent = victoryTime || "?";
+      if (victoryLevelsSpan) {
+        victoryLevelsSpan.textContent = totalLevels;
+      }
       victoryMsg.style.display = "block";
       console.log("Showing victory message");
       setTimeout(() => {

@@ -256,6 +256,7 @@ const game = {
     storage.set("hasWon", "true");
     const timeElapsed = Math.floor((Date.now() - gameState.startTime) / 1000);
     storage.set("victoryTime", timeElapsed.toString());
+    storage.set("totalLevels", levels.length.toString());
 
     if (window.opener && !window.opener.closed) {
       window.close();
@@ -270,11 +271,13 @@ const game = {
 };
 
 const levels = [
+  // Level 1: Pipe Rotation Puzzle
   {
     render: () => {
       const config = LEVEL_CONFIG.PIPE_ROTATION;
 
-      game.getQuestionElement().textContent = "Rotate the pipes to connect the green start to the red end!";
+      game.getQuestionElement().textContent =
+        "Rotate the pipes to connect the green start to the red end!";
 
       const container = game.getButtonsElement();
       container.style.textAlign = "center";
@@ -299,28 +302,38 @@ const levels = [
 
       // Generate a random winding path from start to end
       function generateRandomPath() {
-        const path = [{x: 0, y: 0}];
-        const visited = new Set(['0,0']);
-        let current = {x: 0, y: 0};
-        const target = {x: 4, y: 4};
+        const path = [{ x: 0, y: 0 }];
+        const visited = new Set(["0,0"]);
+        let current = { x: 0, y: 0 };
+        const target = { x: 4, y: 4 };
 
         while (current.x !== target.x || current.y !== target.y) {
           const possibleMoves = [];
 
           // Prefer moving towards target but allow some randomness
-          if (current.x < target.x) possibleMoves.push({x: current.x + 1, y: current.y, weight: 3});
-          if (current.x > target.x) possibleMoves.push({x: current.x - 1, y: current.y, weight: 3});
-          if (current.y < target.y) possibleMoves.push({x: current.x, y: current.y + 1, weight: 3});
-          if (current.y > target.y) possibleMoves.push({x: current.x, y: current.y - 1, weight: 3});
+          if (current.x < target.x)
+            possibleMoves.push({ x: current.x + 1, y: current.y, weight: 3 });
+          if (current.x > target.x)
+            possibleMoves.push({ x: current.x - 1, y: current.y, weight: 3 });
+          if (current.y < target.y)
+            possibleMoves.push({ x: current.x, y: current.y + 1, weight: 3 });
+          if (current.y > target.y)
+            possibleMoves.push({ x: current.x, y: current.y - 1, weight: 3 });
 
           // Add other valid moves with lower weight
-          if (current.x > 0) possibleMoves.push({x: current.x - 1, y: current.y, weight: 1});
-          if (current.x < 4) possibleMoves.push({x: current.x + 1, y: current.y, weight: 1});
-          if (current.y > 0) possibleMoves.push({x: current.x, y: current.y - 1, weight: 1});
-          if (current.y < 4) possibleMoves.push({x: current.x, y: current.y + 1, weight: 1});
+          if (current.x > 0)
+            possibleMoves.push({ x: current.x - 1, y: current.y, weight: 1 });
+          if (current.x < 4)
+            possibleMoves.push({ x: current.x + 1, y: current.y, weight: 1 });
+          if (current.y > 0)
+            possibleMoves.push({ x: current.x, y: current.y - 1, weight: 1 });
+          if (current.y < 4)
+            possibleMoves.push({ x: current.x, y: current.y + 1, weight: 1 });
 
           // Filter out visited cells
-          const validMoves = possibleMoves.filter(m => !visited.has(`${m.x},${m.y}`));
+          const validMoves = possibleMoves.filter(
+            (m) => !visited.has(`${m.x},${m.y}`),
+          );
 
           if (validMoves.length === 0) break; // Dead end, restart
 
@@ -336,7 +349,7 @@ const levels = [
             }
           }
 
-          current = {x: next.x, y: next.y};
+          current = { x: next.x, y: next.y };
           path.push(current);
           visited.add(`${current.x},${current.y}`);
         }
@@ -344,8 +357,8 @@ const levels = [
         // If we didn't reach target, return a simple direct path
         if (current.x !== target.x || current.y !== target.y) {
           const simplePath = [];
-          for (let x = 0; x <= 4; x++) simplePath.push({x, y: 0});
-          for (let y = 1; y <= 4; y++) simplePath.push({x: 4, y});
+          for (let x = 0; x <= 4; x++) simplePath.push({ x, y: 0 });
+          for (let y = 1; y <= 4; y++) simplePath.push({ x: 4, y });
           return simplePath;
         }
 
@@ -382,18 +395,24 @@ const levels = [
         // Calculate direction to previous cell (where we came from)
         let dirFromPrev = -1;
         if (prev) {
-          if (prev.x === pos.x - 1) dirFromPrev = 3; // came from left
-          else if (prev.x === pos.x + 1) dirFromPrev = 1; // came from right
-          else if (prev.y === pos.y - 1) dirFromPrev = 0; // came from top
+          if (prev.x === pos.x - 1)
+            dirFromPrev = 3; // came from left
+          else if (prev.x === pos.x + 1)
+            dirFromPrev = 1; // came from right
+          else if (prev.y === pos.y - 1)
+            dirFromPrev = 0; // came from top
           else if (prev.y === pos.y + 1) dirFromPrev = 2; // came from bottom
         }
 
         // Calculate direction to next cell (where we're going)
         let dirToNext = -1;
         if (next) {
-          if (next.x === pos.x + 1) dirToNext = 1; // going right
-          else if (next.x === pos.x - 1) dirToNext = 3; // going left
-          else if (next.y === pos.y + 1) dirToNext = 2; // going bottom
+          if (next.x === pos.x + 1)
+            dirToNext = 1; // going right
+          else if (next.x === pos.x - 1)
+            dirToNext = 3; // going left
+          else if (next.y === pos.y + 1)
+            dirToNext = 2; // going bottom
           else if (next.y === pos.y - 1) dirToNext = 0; // going top
         }
 
@@ -402,11 +421,11 @@ const levels = [
           // Start or end - use straight pipe in appropriate direction
           const dir = dirFromPrev !== -1 ? dirFromPrev : dirToNext;
           cell.type = PIPE_STRAIGHT;
-          cell.correctRotation = (dir === 0 || dir === 2) ? 0 : 1; // 0 for vertical, 1 for horizontal
+          cell.correctRotation = dir === 0 || dir === 2 ? 0 : 1; // 0 for vertical, 1 for horizontal
         } else if (Math.abs(dirFromPrev - dirToNext) === 2) {
           // Opposite directions = straight pipe
           cell.type = PIPE_STRAIGHT;
-          cell.correctRotation = (dirFromPrev === 0 || dirFromPrev === 2) ? 0 : 1;
+          cell.correctRotation = dirFromPrev === 0 || dirFromPrev === 2 ? 0 : 1;
         } else {
           // Direction change = corner pipe
           cell.type = PIPE_CORNER;
@@ -420,9 +439,12 @@ const levels = [
           // [2,3] = bottom-left = rotation 2
           // [0,3] = top-left = rotation 3
           if (openings[0] === 0 && openings[1] === 1) cell.correctRotation = 0;
-          else if (openings[0] === 1 && openings[1] === 2) cell.correctRotation = 1;
-          else if (openings[0] === 2 && openings[1] === 3) cell.correctRotation = 2;
-          else if (openings[0] === 0 && openings[1] === 3) cell.correctRotation = 3;
+          else if (openings[0] === 1 && openings[1] === 2)
+            cell.correctRotation = 1;
+          else if (openings[0] === 2 && openings[1] === 3)
+            cell.correctRotation = 2;
+          else if (openings[0] === 0 && openings[1] === 3)
+            cell.correctRotation = 3;
         }
       }
 
@@ -458,7 +480,14 @@ const levels = [
         }
       }
 
-      function drawPipe(x, y, type, rotation, highlight = false, isCorrect = false) {
+      function drawPipe(
+        x,
+        y,
+        type,
+        rotation,
+        highlight = false,
+        isCorrect = false,
+      ) {
         const centerX = x * config.CELL_SIZE + config.CELL_SIZE / 2;
         const centerY = y * config.CELL_SIZE + config.CELL_SIZE / 2;
 
@@ -518,7 +547,12 @@ const levels = [
         if (highlightPath) {
           ctx.fillStyle = "rgba(0, 255, 0, 0.1)";
           for (const pos of solutionPath) {
-            ctx.fillRect(pos.x * config.CELL_SIZE, pos.y * config.CELL_SIZE, config.CELL_SIZE, config.CELL_SIZE);
+            ctx.fillRect(
+              pos.x * config.CELL_SIZE,
+              pos.y * config.CELL_SIZE,
+              config.CELL_SIZE,
+              config.CELL_SIZE,
+            );
           }
         }
 
@@ -532,7 +566,9 @@ const levels = [
               let isCorrect = false;
 
               // Find this cell's position in the solution path
-              const pathIndex = solutionPath.findIndex(p => p.x === x && p.y === y);
+              const pathIndex = solutionPath.findIndex(
+                (p) => p.x === x && p.y === y,
+              );
 
               if (pathIndex !== -1) {
                 let connectedToPrev = true;
@@ -550,10 +586,18 @@ const levels = [
                   else if (prev.y === y - 1) dirToPrev = 0;
 
                   const oppDir = (dirToPrev + 2) % 4;
-                  const currentConn = getPipeConnections(cell.type, cell.rotation);
-                  const prevConn = getPipeConnections(prevCell.type, prevCell.rotation);
+                  const currentConn = getPipeConnections(
+                    cell.type,
+                    cell.rotation,
+                  );
+                  const prevConn = getPipeConnections(
+                    prevCell.type,
+                    prevCell.rotation,
+                  );
 
-                  connectedToPrev = currentConn.includes(dirToPrev) && prevConn.includes(oppDir);
+                  connectedToPrev =
+                    currentConn.includes(dirToPrev) &&
+                    prevConn.includes(oppDir);
                 }
 
                 // Check connection to next pipe
@@ -568,16 +612,31 @@ const levels = [
                   else if (next.y === y - 1) dirToNext = 0;
 
                   const oppDir = (dirToNext + 2) % 4;
-                  const currentConn = getPipeConnections(cell.type, cell.rotation);
-                  const nextConn = getPipeConnections(nextCell.type, nextCell.rotation);
+                  const currentConn = getPipeConnections(
+                    cell.type,
+                    cell.rotation,
+                  );
+                  const nextConn = getPipeConnections(
+                    nextCell.type,
+                    nextCell.rotation,
+                  );
 
-                  connectedToNext = currentConn.includes(dirToNext) && nextConn.includes(oppDir);
+                  connectedToNext =
+                    currentConn.includes(dirToNext) &&
+                    nextConn.includes(oppDir);
                 }
 
                 isCorrect = connectedToPrev && connectedToNext;
               }
 
-              drawPipe(x, y, cell.type, cell.rotation, highlightPath, !highlightPath && isCorrect);
+              drawPipe(
+                x,
+                y,
+                cell.type,
+                cell.rotation,
+                highlightPath,
+                !highlightPath && isCorrect,
+              );
             } else {
               // This is a decoy pipe
               drawPipe(x, y, cell.type, cell.rotation, false, false);
@@ -586,8 +645,10 @@ const levels = [
         }
 
         // Draw start marker
-        const startX = solutionPath[0].x * config.CELL_SIZE + config.CELL_SIZE / 2;
-        const startY = solutionPath[0].y * config.CELL_SIZE + config.CELL_SIZE / 2;
+        const startX =
+          solutionPath[0].x * config.CELL_SIZE + config.CELL_SIZE / 2;
+        const startY =
+          solutionPath[0].y * config.CELL_SIZE + config.CELL_SIZE / 2;
         ctx.fillStyle = "#00ff00";
         ctx.beginPath();
         ctx.arc(startX, startY, 15, 0, Math.PI * 2);
@@ -640,22 +701,31 @@ const levels = [
 
           // Determine the direction from current to next
           let directionToNext;
-          if (next.x === current.x + 1) directionToNext = 1; // right
-          else if (next.x === current.x - 1) directionToNext = 3; // left
-          else if (next.y === current.y + 1) directionToNext = 2; // bottom
+          if (next.x === current.x + 1)
+            directionToNext = 1; // right
+          else if (next.x === current.x - 1)
+            directionToNext = 3; // left
+          else if (next.y === current.y + 1)
+            directionToNext = 2; // bottom
           else if (next.y === current.y - 1) directionToNext = 0; // top
 
           // Opposite directions
           const oppositeDir = (directionToNext + 2) % 4;
 
           // Check if current pipe connects in the direction of next
-          const currentConnections = getPipeConnections(currentCell.type, currentCell.rotation);
+          const currentConnections = getPipeConnections(
+            currentCell.type,
+            currentCell.rotation,
+          );
           if (!currentConnections.includes(directionToNext)) {
             return false;
           }
 
           // Check if next pipe connects back to current
-          const nextConnections = getPipeConnections(nextCell.type, nextCell.rotation);
+          const nextConnections = getPipeConnections(
+            nextCell.type,
+            nextCell.rotation,
+          );
           if (!nextConnections.includes(oppositeDir)) {
             return false;
           }
@@ -675,7 +745,12 @@ const levels = [
         const gridX = Math.floor((clickX / rect.width) * config.GRID_SIZE);
         const gridY = Math.floor((clickY / rect.height) * config.GRID_SIZE);
 
-        if (gridX >= 0 && gridX < config.GRID_SIZE && gridY >= 0 && gridY < config.GRID_SIZE) {
+        if (
+          gridX >= 0 &&
+          gridX < config.GRID_SIZE &&
+          gridY >= 0 &&
+          gridY < config.GRID_SIZE
+        ) {
           const cell = grid[gridY][gridX];
           // Allow rotating ANY pipe (decoy or solution)
           cell.rotation = (cell.rotation + 1) % 4;
@@ -684,7 +759,8 @@ const levels = [
           // Only check solution if all solution pipes are correct
           if (checkSolution()) {
             solved = true;
-            game.getQuestionElement().textContent = "Connected! Water is flowing!";
+            game.getQuestionElement().textContent =
+              "Connected! Water is flowing!";
 
             // Animate water flow
             drawGrid(true);
@@ -700,6 +776,7 @@ const levels = [
     },
   },
 
+  // Level 2: Simple YES/NO
   {
     render: () => {
       game.getQuestionElement().textContent = "Do you want to continue?";
@@ -713,12 +790,15 @@ const levels = [
     },
   },
 
+  // Level 3: Precise Timing
   {
     render: () => {
       const config = LEVEL_CONFIG.PRECISE_TIMING;
 
       // Random target window
-      const targetStart = Math.random() * (config.MAX_TARGET_START - config.MIN_TARGET_START) + config.MIN_TARGET_START;
+      const targetStart =
+        Math.random() * (config.MAX_TARGET_START - config.MIN_TARGET_START) +
+        config.MIN_TARGET_START;
       const targetEnd = targetStart + config.WINDOW_SIZE;
       const hideTime = targetStart - config.TIMER_HIDE_BEFORE;
 
@@ -793,6 +873,7 @@ const levels = [
     },
   },
 
+  // Level 4: Many Buttons Timer
   {
     render: () => {
       const config = LEVEL_CONFIG.MANY_BUTTONS;
@@ -853,6 +934,7 @@ const levels = [
     },
   },
 
+  // Level 5: Position vs Label
   {
     render: () => {
       const config = LEVEL_CONFIG.NUMBERED_BUTTONS;
@@ -894,6 +976,7 @@ const levels = [
     },
   },
 
+  // Level 6: Traffic Light
   {
     render: () => {
       const config = LEVEL_CONFIG.TRAFFIC_LIGHT;
@@ -957,6 +1040,7 @@ const levels = [
     },
   },
 
+  // Level 7: Hard Math
   {
     render: () => {
       const config = LEVEL_CONFIG.MATH_QUIZ;
@@ -1000,6 +1084,7 @@ const levels = [
     },
   },
 
+  // Level 8: Reverse Psychology
   {
     render: () => {
       game.getQuestionElement().textContent =
@@ -1014,6 +1099,7 @@ const levels = [
     },
   },
 
+  // Level 9: Alphabetical Sequence
   {
     render: () => {
       const config = LEVEL_CONFIG.SEQUENCE;
@@ -1044,6 +1130,7 @@ const levels = [
     },
   },
 
+  // Level 10: 3 Cup Monte
   {
     render: () => {
       const config = LEVEL_CONFIG.CUP_MONTE;
@@ -1312,6 +1399,7 @@ const levels = [
     },
   },
 
+  // Level 11: Pattern Memory
   {
     render: () => {
       const config = LEVEL_CONFIG.PATTERN_MEMORY;
@@ -1432,6 +1520,7 @@ const levels = [
     },
   },
 
+  // Level 12: Tripwire Maze
   {
     render: () => {
       const config = LEVEL_CONFIG.TRIPWIRE_MAZE;
@@ -1580,7 +1669,10 @@ const levels = [
         ctx.lineCap = "butt";
         ctx.beginPath();
         ctx.moveTo(startZone.x, startZone.y + startZone.height / 2);
-        ctx.lineTo(startZone.x + startZone.width, startZone.y + startZone.height / 2);
+        ctx.lineTo(
+          startZone.x + startZone.width,
+          startZone.y + startZone.height / 2,
+        );
         ctx.stroke();
 
         // White center
@@ -1589,7 +1681,10 @@ const levels = [
         ctx.lineCap = "butt";
         ctx.beginPath();
         ctx.moveTo(startZone.x, startZone.y + startZone.height / 2);
-        ctx.lineTo(startZone.x + startZone.width, startZone.y + startZone.height / 2);
+        ctx.lineTo(
+          startZone.x + startZone.width,
+          startZone.y + startZone.height / 2,
+        );
         ctx.stroke();
 
         // Draw left border using stroke to match the path border style
@@ -1597,8 +1692,14 @@ const levels = [
         ctx.lineWidth = 3;
         ctx.lineCap = "butt";
         ctx.beginPath();
-        ctx.moveTo(startZone.x, startZone.y + startZone.height / 2 - (config.PATH_WIDTH + 6) / 2);
-        ctx.lineTo(startZone.x, startZone.y + startZone.height / 2 + (config.PATH_WIDTH + 6) / 2);
+        ctx.moveTo(
+          startZone.x,
+          startZone.y + startZone.height / 2 - (config.PATH_WIDTH + 6) / 2,
+        );
+        ctx.lineTo(
+          startZone.x,
+          startZone.y + startZone.height / 2 + (config.PATH_WIDTH + 6) / 2,
+        );
         ctx.stroke();
 
         // START text in black
@@ -1722,7 +1823,138 @@ const levels = [
       });
     },
   },
+
+  // Level 13: Dog Breed Identification
+  {
+    render: async () => {
+      const config = LEVEL_CONFIG.DOG_BREED;
+
+      game.getQuestionElement().innerHTML = "Loading dog image...";
+
+      const container = game.getButtonsElement();
+      container.style.textAlign = "center";
+
+      try {
+        // Fetch a random dog image
+        const response = await fetch(config.API_URL);
+        const data = await response.json();
+
+        if (!data.message) {
+          throw new Error("Failed to load dog image");
+        }
+
+        const imageUrl = data.message;
+        // Extract breed from URL format: https://images.dog.ceo/breeds/hound-afghan/n02088094_1003.jpg
+        // Format is: /breeds/BREED-SUBBREED/ or /breeds/BREED/
+        const urlParts = imageUrl.split("/");
+        const breedIndex = urlParts.indexOf("breeds") + 1;
+        const breedPart = urlParts[breedIndex];
+        const breedParts = breedPart.split("-");
+
+        let correctBreed;
+        if (breedParts.length > 1) {
+          // Sub-breed format: "hound-afghan" -> "Afghan Hound"
+          correctBreed =
+            breedParts[1].charAt(0).toUpperCase() +
+            breedParts[1].slice(1) +
+            " " +
+            breedParts[0].charAt(0).toUpperCase() +
+            breedParts[0].slice(1);
+        } else {
+          // Simple breed: "labrador" -> "Labrador"
+          correctBreed = breedPart.charAt(0).toUpperCase() + breedPart.slice(1);
+        }
+
+        // Fetch all breeds to create wrong answers
+        const breedsResponse = await fetch(config.ALL_BREEDS_URL);
+        const breedsData = await breedsResponse.json();
+        const allBreeds = [];
+
+        for (const [breed, subBreeds] of Object.entries(breedsData.message)) {
+          if (subBreeds.length > 0) {
+            for (const subBreed of subBreeds) {
+              allBreeds.push(
+                subBreed.charAt(0).toUpperCase() +
+                  subBreed.slice(1) +
+                  " " +
+                  breed.charAt(0).toUpperCase() +
+                  breed.slice(1),
+              );
+            }
+          } else {
+            allBreeds.push(breed.charAt(0).toUpperCase() + breed.slice(1));
+          }
+        }
+
+        // Filter out the correct breed and shuffle
+        const wrongBreeds = allBreeds.filter((b) => b !== correctBreed);
+        const shuffledWrong = shuffleArray(wrongBreeds);
+
+        // Create answer options
+        const options = [correctBreed];
+        for (
+          let i = 0;
+          i < config.ANSWER_COUNT - 1 && i < shuffledWrong.length;
+          i++
+        ) {
+          options.push(shuffledWrong[i]);
+        }
+        const shuffledOptions = shuffleArray(options);
+
+        // Display the dog image
+        game.getQuestionElement().innerHTML = "What breed is this dog?";
+
+        const img = document.createElement("img");
+        img.src = imageUrl;
+        img.style.maxWidth = "500px";
+        img.style.maxHeight = "400px";
+        img.style.borderRadius = "8px";
+        img.style.marginBottom = "20px";
+        img.style.border = "3px solid #000";
+        container.appendChild(img);
+
+        // Create answer buttons
+        const buttonsContainer = document.createElement("div");
+        buttonsContainer.style.display = "grid";
+        buttonsContainer.style.gridTemplateColumns = "repeat(2, 1fr)";
+        buttonsContainer.style.gap = "15px";
+        buttonsContainer.style.maxWidth = "500px";
+        buttonsContainer.style.margin = "0 auto";
+
+        for (const breed of shuffledOptions) {
+          const btn = createButton(
+            breed,
+            breed === correctBreed ? game.nextLevel : game.die,
+          );
+          buttonsContainer.appendChild(btn);
+        }
+
+        container.appendChild(buttonsContainer);
+      } catch (error) {
+        console.error("Error loading dog API:", error);
+        game.getQuestionElement().textContent =
+          "Failed to load dog image. Click YES to continue.";
+        const fallbackBtn = createButton("YES", game.nextLevel);
+        container.appendChild(fallbackBtn);
+      }
+    },
+  },
 ];
+
+// Level Order Summary:
+// 1. Pipe Rotation Puzzle
+// 2. Simple YES/NO
+// 3. Precise Timing
+// 4. Many Buttons Timer
+// 5. Position vs Label
+// 6. Traffic Light
+// 7. Hard Math
+// 8. Reverse Psychology
+// 9. Alphabetical Sequence
+// 10. 3 Cup Monte
+// 11. Pattern Memory
+// 12. Tripwire Maze
+// 13. Dog Breed Identification
 
 function renderLevel() {
   const level = levels[gameState.currentLevel - 1];
