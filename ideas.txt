@@ -10,7 +10,6 @@
 - Really bad chess (the game) puzzle. 
   - A chess puzzle but with dumb positions and pieces (5 knights)
 - Guess the song. Play 5 seconds of a song and the user has to decide between 5 options. 
-- Dogs API. "Is this a Labrador?", "Is this a poodle?"
 - https://dev.to/onlyoneerin/38-awesome-apis-to-inspire-your-next-software-project-4395 
 - https://github.com/cheatsnake/emojihub 
 
