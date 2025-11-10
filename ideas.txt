@@ -13,6 +13,10 @@
 - https://dev.to/onlyoneerin/38-awesome-apis-to-inspire-your-next-software-project-4395 
 - https://github.com/cheatsnake/emojihub 
 
+- The puzzle where you switch one toggle and it switches other. A puzzle. 
+
+
+
 Other ideas. 
 - Actual leaderboard with stats using a db in Cloudflare.
 - Proper analytics

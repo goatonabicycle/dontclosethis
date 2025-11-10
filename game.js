@@ -271,7 +271,121 @@ const game = {
 };
 
 const levels = [
-  // Level 1: Pipe Rotation Puzzle
+  // Level 1: Lights Out Puzzle
+  {
+    render: () => {
+      game.getQuestionElement().textContent =
+        "Turn all lights OFF! Clicking a light toggles it and its neighbors.";
+
+      const container = game.getButtonsElement();
+      container.style.display = "grid";
+      container.style.gridTemplateColumns = "repeat(4, 1fr)";
+      container.style.gap = "10px";
+      container.style.maxWidth = "400px";
+      container.style.margin = "0 auto";
+      container.style.padding = "20px";
+
+      const gridSize = 4;
+      const grid = [];
+
+      // Initialize grid with random lights (but ensure it's solvable)
+      for (let i = 0; i < gridSize * gridSize; i++) {
+        grid[i] = false; // All off initially
+      }
+
+      // Apply random toggles to create a solvable puzzle
+      // Use a set to avoid toggling the same cell twice
+      const toggledCells = new Set();
+      const numToggles = 5 + Math.floor(Math.random() * 4); // 5-8 unique toggles
+      while (toggledCells.size < numToggles) {
+        toggledCells.add(Math.floor(Math.random() * (gridSize * gridSize)));
+      }
+
+      for (const cellIndex of toggledCells) {
+        toggleCell(cellIndex, false); // Don't update UI, just set state
+      }
+
+      function toggleCell(index, updateUI = true) {
+        const row = Math.floor(index / gridSize);
+        const col = index % gridSize;
+
+        // Toggle the clicked cell
+        grid[index] = !grid[index];
+
+        // Toggle neighbors (up, down, left, right)
+        // Up
+        if (row > 0) {
+          grid[index - gridSize] = !grid[index - gridSize];
+        }
+        // Down
+        if (row < gridSize - 1) {
+          grid[index + gridSize] = !grid[index + gridSize];
+        }
+        // Left
+        if (col > 0) {
+          grid[index - 1] = !grid[index - 1];
+        }
+        // Right
+        if (col < gridSize - 1) {
+          grid[index + 1] = !grid[index + 1];
+        }
+
+        if (updateUI) {
+          updateAllButtons();
+          checkWin();
+        }
+      }
+
+      function updateAllButtons() {
+        for (let i = 0; i < gridSize * gridSize; i++) {
+          const btn = buttons[i];
+          if (grid[i]) {
+            btn.style.background = "#ffff00"; // Yellow when ON
+            btn.style.boxShadow = "0 0 20px rgba(255, 255, 0, 0.8)";
+          } else {
+            btn.style.background = "#333"; // Dark when OFF
+            btn.style.boxShadow = "none";
+          }
+        }
+      }
+
+      function checkWin() {
+        const allOff = grid.every((light) => !light);
+        if (allOff) {
+          game.getQuestionElement().textContent = "All lights are OFF! Well done!";
+          // Disable all buttons
+          buttons.forEach((btn) => {
+            btn.disabled = true;
+            btn.style.opacity = "0.5";
+          });
+          setTimeout(() => {
+            game.nextLevel();
+          }, 1000);
+        }
+      }
+
+      // Create buttons
+      const buttons = [];
+      for (let i = 0; i < gridSize * gridSize; i++) {
+        const btn = createButton("", () => toggleCell(i), {
+          width: "80px",
+          height: "80px",
+          fontSize: "24px",
+          border: "2px solid #000",
+          borderRadius: "8px",
+          cursor: "pointer",
+          transition: "all 0.2s ease",
+        });
+        buttons.push(btn);
+        container.appendChild(btn);
+      }
+
+      // Initial render
+      updateAllButtons();
+    },
+  },
+
+  // Level 2: Pipe Rotation Puzzle
   {
     render: () => {
       const config = LEVEL_CONFIG.PIPE_ROTATION;
@@ -2003,19 +2117,20 @@ const levels = [
 ];
 
 // Level Order Summary:
-// 1. Pipe Rotation Puzzle (10x10 grid)
-// 2. Simple YES/NO
-// 3. Many Buttons Timer
-// 4. Position vs Label
-// 5. Traffic Light
-// 6. Hard Math
-// 7. Reverse Psychology
-// 8. Precise Timing
-// 9. Alphabetical Sequence
-// 10. 3 Cup Monte
-// 11. Pattern Memory
-// 12. Tripwire Maze
-// 13. Dog Breed Identification
+// 1. Lights Out Puzzle (4x4 grid)
+// 2. Pipe Rotation Puzzle (10x10 grid)
+// 3. Simple YES/NO
+// 4. Many Buttons Timer
+// 5. Position vs Label
+// 6. Traffic Light
+// 7. Hard Math
+// 8. Reverse Psychology
+// 9. Precise Timing
+// 10. Alphabetical Sequence
+// 11. 3 Cup Monte
+// 12. Pattern Memory
+// 13. Tripwire Maze
+// 14. Dog Breed Identification
 
 function renderLevel() {
   const level = levels[gameState.currentLevel - 1];
