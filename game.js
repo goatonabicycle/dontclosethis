@@ -271,7 +271,192 @@ const game = {
 };
 
 const levels = [
-  // Level 1: Lights Out Puzzle
+  // Level 1: Frogs and Toads Puzzle
+  {
+    render: () => {
+      game.getQuestionElement().innerHTML =
+        "Swap the frogs and toads!<br><span style='font-size: 0.75rem; opacity: 0.7;'>Click to move forward or jump over one opponent</span>";
+
+      // Make game container wider for this level
+      game.getContainer().style.maxWidth = "800px";
+
+      const container = game.getButtonsElement();
+      container.style.display = "flex";
+      container.style.flexDirection = "column";
+      container.style.alignItems = "center";
+      container.style.justifyContent = "center";
+      container.style.gap = "5px";
+      container.style.padding = "5px";
+
+      const numPieces = 3;
+      const totalSlots = numPieces * 2 + 1; // 3 frogs + 1 empty + 3 toads = 7 slots
+
+      // Initial state: [F, F, F, _, T, T, T]
+      // Goal state: [T, T, T, _, F, F, F]
+      const state = [];
+      for (let i = 0; i < numPieces; i++) state.push("F"); // Frogs on left
+      state.push("_"); // Empty space in middle
+      for (let i = 0; i < numPieces; i++) state.push("T"); // Toads on right
+
+      const emptyIndex = () => state.indexOf("_");
+
+      function isValidMove(index) {
+        const empty = emptyIndex();
+        const piece = state[index];
+
+        if (piece === "_") return false;
+
+        // Frogs (F) can only move right, Toads (T) can only move left
+        if (piece === "F") {
+          // Can move right into empty space
+          if (index + 1 === empty) return true;
+          // Can jump right over one toad into empty space
+          if (index + 2 === empty && state[index + 1] === "T") return true;
+        } else if (piece === "T") {
+          // Can move left into empty space
+          if (index - 1 === empty) return true;
+          // Can jump left over one frog into empty space
+          if (index - 2 === empty && state[index - 1] === "F") return true;
+        }
+
+        return false;
+      }
+
+      function movePiece(index) {
+        if (!isValidMove(index)) return;
+
+        const empty = emptyIndex();
+
+        // Add bounce animation to the moving piece
+        const movingBtn = buttons[index];
+        movingBtn.style.transform = "scale(1.15) translateY(-5px)";
+
+        setTimeout(() => {
+          // Swap piece with empty space
+          [state[index], state[empty]] = [state[empty], state[index]];
+          updateDisplay();
+          checkWin();
+        }, 150);
+      }
+
+      function checkWin() {
+        // Goal: [T, T, T, _, F, F, F]
+        let correct = true;
+        for (let i = 0; i < numPieces; i++) {
+          if (state[i] !== "T") correct = false;
+        }
+        if (state[numPieces] !== "_") correct = false;
+        for (let i = numPieces + 1; i < totalSlots; i++) {
+          if (state[i] !== "F") correct = false;
+        }
+
+        if (correct) {
+          game.getQuestionElement().textContent =
+            "Perfect! They've all switched places! 🎉";
+          buttons.forEach((btn) => {
+            btn.disabled = true;
+            btn.style.opacity = "0.6";
+          });
+          setTimeout(() => {
+            game.nextLevel();
+          }, 1500);
+        }
+      }
+
+      function updateDisplay() {
+        buttons.forEach((btn, index) => {
+          const piece = state[index];
+          const isValid = isValidMove(index);
+
+          if (piece === "F") {
+            btn.textContent = "🐸";
+            btn.style.background = isValid
+              ? "linear-gradient(135deg, #81C784 0%, #66BB6A 100%)"
+              : "linear-gradient(135deg, #66BB6A 0%, #4CAF50 100%)";
+            btn.style.boxShadow = isValid
+              ? "0 6px 20px rgba(76, 175, 80, 0.5), 0 0 0 3px rgba(76, 175, 80, 0.2)"
+              : "0 2px 8px rgba(0, 0, 0, 0.2)";
+            btn.style.cursor = isValid ? "pointer" : "not-allowed";
+            btn.style.transform = isValid ? "scale(1)" : "scale(0.92)";
+            btn.style.opacity = isValid ? "1" : "0.5";
+            btn.style.filter = isValid ? "brightness(1.1)" : "brightness(0.8)";
+          } else if (piece === "T") {
+            btn.textContent = "🐢";
+            btn.style.background = isValid
+              ? "linear-gradient(135deg, #FFB74D 0%, #FFA726 100%)"
+              : "linear-gradient(135deg, #FFA726 0%, #FF9800 100%)";
+            btn.style.boxShadow = isValid
+              ? "0 6px 20px rgba(255, 152, 0, 0.5), 0 0 0 3px rgba(255, 152, 0, 0.2)"
+              : "0 2px 8px rgba(0, 0, 0, 0.2)";
+            btn.style.cursor = isValid ? "pointer" : "not-allowed";
+            btn.style.transform = isValid ? "scale(1)" : "scale(0.92)";
+            btn.style.opacity = isValid ? "1" : "0.5";
+            btn.style.filter = isValid ? "brightness(1.1)" : "brightness(0.8)";
+          } else {
+            btn.textContent = "";
+            btn.style.background = "#f5f5f5";
+            btn.style.boxShadow = "inset 0 2px 8px rgba(0, 0, 0, 0.15)";
+            btn.style.cursor = "default";
+            btn.style.transform = "scale(1)";
+            btn.style.opacity = "1";
+            btn.style.filter = "none";
+          }
+        });
+      }
+
+      // Create board container with visual platform
+      const boardWrapper = document.createElement("div");
+      boardWrapper.style.position = "relative";
+      boardWrapper.style.padding = "10px";
+      boardWrapper.style.background =
+        "linear-gradient(to bottom, #8B7355 0%, #6F5B4A 100%)";
+      boardWrapper.style.borderRadius = "12px";
+      boardWrapper.style.boxShadow = "0 4px 15px rgba(0, 0, 0, 0.3)";
+
+      const slotsContainer = document.createElement("div");
+      slotsContainer.style.display = "flex";
+      slotsContainer.style.gap = "6px";
+      slotsContainer.style.justifyContent = "center";
+
+      boardWrapper.appendChild(slotsContainer);
+      container.appendChild(boardWrapper);
+
+      // Create buttons for each slot
+      const buttons = [];
+      for (let i = 0; i < totalSlots; i++) {
+        const btn = createButton("", () => movePiece(i), {
+          width: "70px",
+          height: "70px",
+          fontSize: "42px",
+          border: "3px solid #333",
+          borderRadius: "8px",
+          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        });
+
+        btn.addEventListener("mouseenter", () => {
+          if (isValidMove(i) && state[i] !== "_") {
+            btn.style.transform = "scale(1.08) translateY(-2px)";
+          }
+        });
+
+        btn.addEventListener("mouseleave", () => {
+          if (state[i] !== "_") {
+            btn.style.transform = isValidMove(i) ? "scale(1)" : "scale(0.95)";
+          }
+        });
+
+        buttons.push(btn);
+        slotsContainer.appendChild(btn);
+      }
+
+      updateDisplay();
+    },
+  },
+
+  // Level 2: Lights Out Puzzle
   {
     render: () => {
       game.getQuestionElement().textContent =
@@ -385,7 +570,7 @@ const levels = [
     },
   },
 
-  // Level 2: Pipe Rotation Puzzle
+  // Level 3: Pipe Rotation Puzzle
   {
     render: () => {
       const config = LEVEL_CONFIG.PIPE_ROTATION;
@@ -2117,20 +2302,21 @@ const levels = [
 ];
 
 // Level Order Summary:
-// 1. Lights Out Puzzle (4x4 grid)
-// 2. Pipe Rotation Puzzle (10x10 grid)
-// 3. Simple YES/NO
-// 4. Many Buttons Timer
-// 5. Position vs Label
-// 6. Traffic Light
-// 7. Hard Math
-// 8. Reverse Psychology
-// 9. Precise Timing
-// 10. Alphabetical Sequence
-// 11. 3 Cup Monte
-// 12. Pattern Memory
-// 13. Tripwire Maze
-// 14. Dog Breed Identification
+// 1. Frogs and Toads Puzzle (swap 3 frogs and 3 toads)
+// 2. Lights Out Puzzle (4x4 grid)
+// 3. Pipe Rotation Puzzle (10x10 grid)
+// 4. Simple YES/NO
+// 5. Many Buttons Timer
+// 6. Position vs Label
+// 7. Traffic Light
+// 8. Hard Math
+// 9. Reverse Psychology
+// 10. Precise Timing
+// 11. Alphabetical Sequence
+// 12. 3 Cup Monte
+// 13. Pattern Memory
+// 14. Tripwire Maze
+// 15. Dog Breed Identification
 
 function renderLevel() {
   const level = levels[gameState.currentLevel - 1];
