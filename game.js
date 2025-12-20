@@ -271,11 +271,193 @@ const game = {
 };
 
 const levels = [
-  // Level 1: Frogs and Toads Puzzle
+  // Level 0: Introduction
   {
     render: () => {
       game.getQuestionElement().innerHTML =
-        "Swap the frogs and toads!<br><span style='font-size: 0.75rem; opacity: 0.7;'>Click to move forward or jump over one opponent</span>";
+        "This tab wants to close.<br><br>Don't let it.<br><br><span style='font-size: 0.85rem; opacity: 0.7;'>Fail a challenge and your tab closes. If your tab closes, you lose.</span>";
+
+      const container = game.getButtonsElement();
+      const beginBtn = createButton("BEGIN", game.nextLevel);
+      container.appendChild(beginBtn);
+    },
+  },
+
+  // Level 1: Pong - Survive 10 Hits
+  {
+    render: () => {
+      game.getQuestionElement().innerHTML =
+        "Survive 10 hits or your tab closes!<br><span style='font-size: 0.75rem; opacity: 0.7;'>Move your mouse to control the paddle</span>";
+
+      const container = game.getButtonsElement();
+      container.style.display = "flex";
+      container.style.flexDirection = "column";
+      container.style.alignItems = "center";
+      container.style.gap = "20px";
+
+      // Game state
+      let hits = 0;
+      let gameRunning = false;
+      let animationId = null;
+
+      // Create canvas
+      const canvas = document.createElement("canvas");
+      canvas.width = 500;
+      canvas.height = 400;
+      canvas.style.border = "3px solid #000";
+      canvas.style.background = "#000";
+      const ctx = canvas.getContext("2d");
+
+      // Game objects
+      const paddle = {
+        x: canvas.width / 2 - 50,
+        y: canvas.height - 30,
+        width: 100,
+        height: 15,
+        speed: 0,
+      };
+
+      const ball = {
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+        radius: 8,
+        dx: 4,
+        dy: -4,
+        speed: 4,
+      };
+
+      // Score display
+      const scoreDiv = document.createElement("div");
+      scoreDiv.style.fontSize = "1.5rem";
+      scoreDiv.style.fontWeight = "bold";
+      scoreDiv.style.color = "#000";
+      scoreDiv.textContent = `Hits: ${hits}/10`;
+
+      // Mouse control
+      canvas.addEventListener("mousemove", (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        paddle.x = mouseX - paddle.width / 2;
+
+        // Keep paddle in bounds
+        if (paddle.x < 0) paddle.x = 0;
+        if (paddle.x + paddle.width > canvas.width)
+          paddle.x = canvas.width - paddle.width;
+      });
+
+      function drawPaddle() {
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+      }
+
+      function drawBall() {
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function drawScore() {
+        ctx.fillStyle = "#fff";
+        ctx.font = "20px 'Courier New', monospace";
+        ctx.textAlign = "right";
+        ctx.fillText(`${hits}/10`, canvas.width - 20, 30);
+      }
+
+      function updateBall() {
+        ball.x += ball.dx;
+        ball.y += ball.dy;
+
+        // Wall collision (left/right)
+        if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) {
+          ball.dx = -ball.dx;
+        }
+
+        // Top wall collision
+        if (ball.y - ball.radius < 0) {
+          ball.dy = -ball.dy;
+        }
+
+        // Paddle collision
+        if (
+          ball.y + ball.radius >= paddle.y &&
+          ball.y - ball.radius <= paddle.y + paddle.height &&
+          ball.x >= paddle.x &&
+          ball.x <= paddle.x + paddle.width
+        ) {
+          // Hit the paddle!
+          ball.dy = -Math.abs(ball.dy);
+          hits++;
+          scoreDiv.textContent = `Hits: ${hits}/10`;
+
+          // Add some horizontal variation based on where the ball hits the paddle
+          const hitPos = (ball.x - paddle.x) / paddle.width; // 0 to 1
+          ball.dx = (hitPos - 0.5) * 8; // -4 to 4
+
+          // Increase speed slightly every 3 hits
+          if (hits % 3 === 0) {
+            ball.dx *= 1.1;
+            ball.dy *= 1.1;
+          }
+
+          // Check win condition
+          if (hits >= 10) {
+            gameRunning = false;
+            cancelAnimationFrame(animationId);
+            setTimeout(() => {
+              game.nextLevel();
+            }, 500);
+          }
+        }
+
+        // Ball missed (bottom)
+        if (ball.y - ball.radius > canvas.height) {
+          gameRunning = false;
+          cancelAnimationFrame(animationId);
+          game.die();
+        }
+      }
+
+      function gameLoop() {
+        if (!gameRunning) return;
+
+        // Clear canvas
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        drawPaddle();
+        drawBall();
+        drawScore();
+        updateBall();
+
+        animationId = requestAnimationFrame(gameLoop);
+      }
+
+      // Start button
+      const startBtn = createButton("START", () => {
+        startBtn.remove();
+        canvas.style.cursor = "none";
+        gameRunning = true;
+        gameLoop();
+      });
+
+      container.appendChild(scoreDiv);
+      container.appendChild(canvas);
+      container.appendChild(startBtn);
+
+      // Cleanup on level change
+      return () => {
+        gameRunning = false;
+        if (animationId) cancelAnimationFrame(animationId);
+      };
+    },
+  },
+
+  // Level 2: Frogs and Toads Puzzle
+  {
+    render: () => {
+      game.getQuestionElement().innerHTML =
+        "Swap the frogs and toads or your tab closes!<br><span style='font-size: 0.75rem; opacity: 0.7;'>Click to move forward or jump over one opponent</span>";
 
       // Make game container wider for this level
       game.getContainer().style.maxWidth = "800px";
@@ -2302,21 +2484,23 @@ const levels = [
 ];
 
 // Level Order Summary:
-// 1. Frogs and Toads Puzzle (swap 3 frogs and 3 toads)
-// 2. Lights Out Puzzle (4x4 grid)
-// 3. Pipe Rotation Puzzle (10x10 grid)
-// 4. Simple YES/NO
-// 5. Many Buttons Timer
-// 6. Position vs Label
-// 7. Traffic Light
-// 8. Hard Math
-// 9. Reverse Psychology
-// 10. Precise Timing
-// 11. Alphabetical Sequence
-// 12. 3 Cup Monte
-// 13. Pattern Memory
-// 14. Tripwire Maze
-// 15. Dog Breed Identification
+// 1. Introduction
+// 2. Pong (survive 10 hits)
+// 3. Frogs and Toads Puzzle (swap 3 frogs and 3 toads)
+// 4. Lights Out Puzzle (4x4 grid)
+// 5. Pipe Rotation Puzzle (10x10 grid)
+// 6. Simple YES/NO
+// 7. Many Buttons Timer
+// 8. Position vs Label
+// 9. Traffic Light
+// 10. Hard Math
+// 11. Reverse Psychology
+// 12. Precise Timing
+// 13. Alphabetical Sequence
+// 14. 3 Cup Monte
+// 15. Pattern Memory
+// 16. Tripwire Maze
+// 17. Dog Breed Identification
 
 function renderLevel() {
   const level = levels[gameState.currentLevel - 1];
