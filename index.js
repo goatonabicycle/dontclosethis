@@ -11,6 +11,12 @@ const HIGH_SCORE_CONFIG = {
   MAX_NAME_LENGTH: 10,
 };
 
+// API Configuration (must match game.js)
+const API_CONFIG = {
+  BASE_URL: "https://dontclosethis-api.YOUR_SUBDOMAIN.workers.dev", // Update this!
+  ENABLED: false, // Set to true when API is deployed
+};
+
 // Safe localStorage wrapper with error handling
 const storage = {
   get(key) {
@@ -96,50 +102,100 @@ function isScoreBetter(newScore, oldScore) {
   return newTime < oldTime;
 }
 
-function loadHighScores() {
-  const scores = storage.getJSON(STORAGE_KEYS.HIGH_SCORES, []);
+async function fetchGlobalScores() {
+  if (!API_CONFIG.ENABLED) return null;
+
+  try {
+    const response = await fetch(`${API_CONFIG.BASE_URL}/api/scores?limit=10`);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (e) {
+    console.warn("Failed to fetch global scores:", e);
+    return null;
+  }
+}
+
+function renderScoresTable(scoresBody, scores, isGlobal = false) {
+  if (!scores || scores.length === 0) {
+    scoresBody.innerHTML =
+      '<tr><td colspan="3" class="no-scores">No scores yet</td></tr>';
+    return;
+  }
+
+  scoresBody.innerHTML = scores
+    .map(
+      (score, index) => `
+        <tr>
+          <td class="score-rank">${score.rank || index + 1}</td>
+          <td>${sanitizeHTML(score.playerName || score.initials)}</td>
+          <td>Level ${score.level} in ${score.timeElapsed || "?"}s</td>
+        </tr>
+      `,
+    )
+    .join("");
+}
+
+async function loadHighScores() {
   const scoresBody = document.getElementById("scores-body");
+  const globalScoresBody = document.getElementById("global-scores-body");
 
   if (!scoresBody) {
     console.error("scores-body element not found");
     return;
   }
 
-  if (!Array.isArray(scores) || scores.length === 0) {
+  // Load local scores
+  const localScores = storage.getJSON(STORAGE_KEYS.HIGH_SCORES, []);
+
+  if (Array.isArray(localScores) && localScores.length > 0) {
+    const bestScores = {};
+    localScores.forEach((score) => {
+      if (!score || typeof score.initials !== "string") return;
+
+      const player = score.initials;
+      if (!bestScores[player] || isScoreBetter(score, bestScores[player])) {
+        bestScores[player] = score;
+      }
+    });
+
+    const uniqueScores = Object.values(bestScores);
+    uniqueScores.sort((a, b) => {
+      if (b.level !== a.level) return b.level - a.level;
+      return (a.timeElapsed || 999999) - (b.timeElapsed || 999999);
+    });
+
+    const topScores = uniqueScores.slice(0, HIGH_SCORE_CONFIG.MAX_DISPLAY);
+    renderScoresTable(scoresBody, topScores);
+  } else {
     scoresBody.innerHTML =
-      '<tr><td colspan="3" class="no-scores">No scores yet</td></tr>';
-    return;
+      '<tr><td colspan="3" class="no-scores">No local scores yet</td></tr>';
   }
 
-  const bestScores = {};
-  scores.forEach((score) => {
-    if (!score || typeof score.initials !== "string") return;
-
-    const player = score.initials;
-    if (!bestScores[player] || isScoreBetter(score, bestScores[player])) {
-      bestScores[player] = score;
+  // Load global scores if API is enabled
+  if (API_CONFIG.ENABLED && globalScoresBody) {
+    // Show the global leaderboard section
+    const globalSection = document.getElementById("global-leaderboard");
+    if (globalSection) {
+      globalSection.style.display = "block";
     }
-  });
 
-  const uniqueScores = Object.values(bestScores);
-  uniqueScores.sort((a, b) => {
-    if (b.level !== a.level) return b.level - a.level;
-    return (a.timeElapsed || 999999) - (b.timeElapsed || 999999);
-  });
+    globalScoresBody.innerHTML =
+      '<tr><td colspan="3" class="no-scores">Loading...</td></tr>';
 
-  const topScores = uniqueScores.slice(0, HIGH_SCORE_CONFIG.MAX_DISPLAY);
+    const globalData = await fetchGlobalScores();
+    if (globalData?.globalTop) {
+      renderScoresTable(globalScoresBody, globalData.globalTop, true);
 
-  scoresBody.innerHTML = topScores
-    .map(
-      (score, index) => `
-        <tr>
-          <td class="score-rank">${index + 1}</td>
-          <td>${sanitizeHTML(score.initials)}</td>
-          <td>Reach level ${score.level} in ${score.timeElapsed || "?"}s</td>
-        </tr>
-      `,
-    )
-    .join("");
+      // Update stats if element exists
+      const statsEl = document.getElementById("global-stats");
+      if (statsEl && globalData.stats) {
+        statsEl.textContent = `(${globalData.stats.totalPlayers} players)`;
+      }
+    } else {
+      globalScoresBody.innerHTML =
+        '<tr><td colspan="3" class="no-scores">Could not load global scores</td></tr>';
+    }
+  }
 }
 
 function startGame() {

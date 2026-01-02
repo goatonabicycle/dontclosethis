@@ -7,6 +7,88 @@ const GAME_CONFIG = {
   DEFAULT_INITIALS: "AAA",
 };
 
+// API Configuration
+const API_CONFIG = {
+  BASE_URL: "https://dontclosethis-api.YOUR_SUBDOMAIN.workers.dev", // Update this!
+  ENABLED: false, // Set to true when API is deployed
+};
+
+// Analytics tracking
+const analytics = {
+  sessionId: null,
+  levelStartTime: null,
+
+  async init() {
+    if (!API_CONFIG.ENABLED) return;
+
+    // Generate or retrieve session ID
+    this.sessionId = sessionStorage.getItem("gameSessionId");
+    if (!this.sessionId) {
+      this.sessionId = crypto.randomUUID();
+      sessionStorage.setItem("gameSessionId", this.sessionId);
+    }
+
+    // Register session with server
+    try {
+      await fetch(`${API_CONFIG.BASE_URL}/api/session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: this.sessionId }),
+      });
+    } catch (e) {
+      console.warn("Failed to init analytics session:", e);
+    }
+  },
+
+  startLevel() {
+    this.levelStartTime = Date.now();
+  },
+
+  async recordAttempt(level, success) {
+    if (!API_CONFIG.ENABLED || !this.sessionId) return;
+
+    const timeSpent = this.levelStartTime
+      ? Math.floor((Date.now() - this.levelStartTime) / 1000)
+      : 0;
+
+    try {
+      await fetch(`${API_CONFIG.BASE_URL}/api/attempt`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: this.sessionId,
+          level,
+          success,
+          timeSpent,
+        }),
+      });
+    } catch (e) {
+      console.warn("Failed to record attempt:", e);
+    }
+  },
+
+  async submitScore(playerName, level, timeElapsed) {
+    if (!API_CONFIG.ENABLED) return null;
+
+    try {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/scores`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          playerName,
+          level,
+          timeElapsed,
+          sessionId: this.sessionId,
+        }),
+      });
+      return await response.json();
+    } catch (e) {
+      console.warn("Failed to submit score:", e);
+      return null;
+    }
+  },
+};
+
 const LEVEL_CONFIG = {
   MANY_BUTTONS: {
     MIN_BUTTONS: 25,
@@ -224,6 +306,10 @@ function saveHighScore() {
 const game = {
   nextLevel: () => {
     clearAllIntervals();
+
+    // Record successful attempt
+    analytics.recordAttempt(gameState.currentLevel, true);
+
     gameState.currentLevel++;
     if (gameState.currentLevel > levels.length) {
       game.victory();
@@ -234,6 +320,10 @@ const game = {
 
   die: () => {
     clearAllIntervals();
+
+    // Record failed attempt
+    analytics.recordAttempt(gameState.currentLevel, false);
+
     gameState.totalAttempts++;
     saveProgress();
     saveHighScore();
@@ -247,14 +337,22 @@ const game = {
     }
   },
 
-  victory: () => {
+  victory: async () => {
     clearAllIntervals();
     gameState.totalAttempts++;
     saveProgress();
     saveHighScore();
 
-    storage.set("hasWon", "true");
     const timeElapsed = Math.floor((Date.now() - gameState.startTime) / 1000);
+
+    // Submit score to global leaderboard
+    const playerName = storage.get(GAME_CONFIG.PLAYER_KEY) || GAME_CONFIG.DEFAULT_INITIALS;
+    const result = await analytics.submitScore(playerName, levels.length, timeElapsed);
+    if (result?.isTopTen) {
+      storage.set("madeTopTen", "true");
+    }
+
+    storage.set("hasWon", "true");
     storage.set("victoryTime", timeElapsed.toString());
     storage.set("totalLevels", levels.length.toString());
 
@@ -2505,6 +2603,9 @@ const levels = [
 function renderLevel() {
   const level = levels[gameState.currentLevel - 1];
 
+  // Track level start time for analytics
+  analytics.startLevel();
+
   const levelIndicator = getElement("current-level");
   if (levelIndicator) {
     levelIndicator.textContent = gameState.currentLevel;
@@ -2545,6 +2646,9 @@ function renderLevel() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Initialize analytics
+  analytics.init();
+
   const urlParams = new URLSearchParams(window.location.search);
   const debugLevel = urlParams.get("level");
   if (debugLevel && !isNaN(debugLevel)) {

@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS high_scores (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   player_name TEXT NOT NULL,
-  level INTEGER NOT NULL CHECK(level >= 1 AND level <= 13),
+  level INTEGER NOT NULL CHECK(level >= 1 AND level <= 20),
   time_elapsed INTEGER NOT NULL CHECK(time_elapsed >= 0),
   timestamp INTEGER NOT NULL,
   ip_hash TEXT,
@@ -28,3 +28,57 @@ ON high_scores(timestamp DESC);
 -- Index for checking duplicate submissions
 CREATE INDEX IF NOT EXISTS idx_session_timestamp
 ON high_scores(session_id, timestamp);
+
+-- ============================================
+-- ANALYTICS TABLES
+-- ============================================
+
+-- Track every level attempt (success or failure)
+CREATE TABLE IF NOT EXISTS level_attempts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id TEXT NOT NULL,
+  level INTEGER NOT NULL,
+  success INTEGER NOT NULL CHECK(success IN (0, 1)),
+  time_spent INTEGER NOT NULL,
+  timestamp INTEGER NOT NULL,
+  ip_hash TEXT
+);
+
+-- Index for level analytics
+CREATE INDEX IF NOT EXISTS idx_level_attempts_level
+ON level_attempts(level);
+
+-- Index for session tracking
+CREATE INDEX IF NOT EXISTS idx_level_attempts_session
+ON level_attempts(session_id);
+
+-- Aggregated daily stats (updated by worker)
+CREATE TABLE IF NOT EXISTS daily_stats (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  date TEXT NOT NULL,
+  level INTEGER NOT NULL,
+  attempts INTEGER DEFAULT 0,
+  successes INTEGER DEFAULT 0,
+  failures INTEGER DEFAULT 0,
+  avg_time_spent INTEGER DEFAULT 0,
+  UNIQUE(date, level)
+);
+
+-- Index for date queries
+CREATE INDEX IF NOT EXISTS idx_daily_stats_date
+ON daily_stats(date DESC);
+
+-- Game sessions
+CREATE TABLE IF NOT EXISTS game_sessions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id TEXT NOT NULL UNIQUE,
+  started_at INTEGER NOT NULL,
+  ended_at INTEGER,
+  max_level_reached INTEGER DEFAULT 1,
+  completed INTEGER DEFAULT 0 CHECK(completed IN (0, 1)),
+  ip_hash TEXT
+);
+
+-- Index for session lookups
+CREATE INDEX IF NOT EXISTS idx_game_sessions_id
+ON game_sessions(session_id);

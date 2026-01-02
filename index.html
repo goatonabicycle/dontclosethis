@@ -29,7 +29,7 @@
     <button id="start-btn">Start Game</button>
 
     <div class="high-scores">
-        <h2>HIGH SCORES</h2>
+        <h2>LOCAL HIGH SCORES</h2>
         <table class="score-table">
             <thead>
                 <tr>
@@ -41,6 +41,24 @@
             <tbody id="scores-body">
                 <tr>
                     <td colspan="3" class="no-scores">No scores yet</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="high-scores" id="global-leaderboard" style="display: none;">
+        <h2>GLOBAL LEADERBOARD <span id="global-stats" style="font-size: 0.7rem; opacity: 0.6;"></span></h2>
+        <table class="score-table">
+            <thead>
+                <tr>
+                    <th class="score-rank">#</th>
+                    <th>PLAYER</th>
+                    <th>ACHIEVEMENT</th>
+                </tr>
+            </thead>
+            <tbody id="global-scores-body">
+                <tr>
+                    <td colspan="3" class="no-scores">Loading...</td>
                 </tr>
             </tbody>
         </table>
